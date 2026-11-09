@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Vremenska napoved za Evropo</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Animated ECMWF IFS forecast maps for Europe, from ECMWF Open Data.">
+<meta name="description" content="Animirani zemljevidi napovedi modela ECMWF IFS za Evropo, iz odprtih podatkov ECMWF.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -210,16 +210,16 @@ button, select, input { font: inherit; color: inherit; }
       <h1>Vremenska napoved za Evropo</h1>
       <p class="run" id="runLabel">Nalaganje vremenske napovedi …</p>
     </header>
-    <nav class="layers" id="layers" aria-label="Map layer"></nav>
+    <nav class="layers" id="layers" aria-label="Sloj zemljevida"></nav>
 
-    <section class="legend desk-only" id="legendDesk" aria-label="Colour scale">
+    <section class="legend desk-only" id="legendDesk" aria-label="Barvna lestvica">
       <p class="group-label" id="legendTitle">Merilo</p>
       <canvas id="legendBar" width="440" height="24"></canvas>
       <div class="ticks" id="legendTicks"></div>
       <p class="legend-note" id="legendNote"></p>
     </section>
 
-    <section class="options desk-only" id="optionsDesk" aria-label="Overlays and units">
+    <section class="options desk-only" id="optionsDesk" aria-label="Prekrivanje in enote">
       <p class="group-label">Prekrivanje</p>
       <label class="opt"><input type="checkbox" id="optIsobars" checked> Izobare in središča zračnega tlaka</label>
       <label class="opt"><input type="checkbox" id="optFlow"> Tok vetra (10 m)</label>
@@ -232,14 +232,14 @@ button, select, input { font: inherit; color: inherit; }
     </section>
 
     <footer class="credits desk-only" id="creditsDesk">
-      <p>Model guidance only, not a forecast or warning. For warnings see your national weather service or <a href="https://meteoalarm.org" target="_blank" rel="noopener">MeteoAlarm</a>.</p>
-      <p>Data: © ECMWF, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Cropped and unit-converted. Coastlines: Natural Earth.</p>
-      <p>Based on ideas from <a href="https://github.com/tehoro/weather-explorer-web" target="_blank" rel="noopener">Weather Explorer</a> by Neil Gordon (MIT).</p>
+      <p>Samo izračun modela, ne napoved ali opozorilo. Za opozorila glej <a href="https://meteo.arso.gov.si" target="_blank" rel="noopener">ARSO</a> ali <a href="https://meteoalarm.org" target="_blank" rel="noopener">MeteoAlarm</a>.</p>
+      <p>Podatki: © ECMWF, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Obrezano in pretvorjeno v druge enote. Obale: Natural Earth.</p>
+      <p>Po zgledu aplikacije <a href="https://github.com/tehoro/weather-explorer-web" target="_blank" rel="noopener">Weather Explorer</a> avtorja Neila Gordona (MIT).</p>
       <p id="builtLabel"></p>
     </footer>
 
     <details class="more mobile-only" id="moreMobile">
-      <summary>Overlays &amp; credits</summary>
+      <summary>Prekrivanje in viri</summary>
       <div id="moreSlot"></div>
     </details>
   </aside>
@@ -249,11 +249,11 @@ button, select, input { font: inherit; color: inherit; }
       <canvas id="field"></canvas>
       <canvas id="lines"></canvas>
       <canvas id="flow"></canvas>
-      <div class="status" id="status">Loading forecast data…</div>
+      <div class="status" id="status">Nalaganje podatkov …</div>
       <div class="map-tools">
-        <button id="zoomIn" aria-label="Zoom in">+</button>
-        <button id="zoomOut" aria-label="Zoom out">−</button>
-        <button id="zoomReset" aria-label="Show all of Europe" title="Show all of Europe">⤢</button>
+        <button id="zoomIn" aria-label="Povečaj">+</button>
+        <button id="zoomOut" aria-label="Pomanjšaj">−</button>
+        <button id="zoomReset" aria-label="Prikaži vso Evropo" title="Prikaži vso Evropo">⤢</button>
       </div>
       <div class="tip" id="tip" hidden></div>
       <div class="legend legend-float" id="legendFloat" aria-hidden="true">
@@ -264,15 +264,15 @@ button, select, input { font: inherit; color: inherit; }
         <div class="probe-head">
           <span class="val" id="probeVal">–</span>
           <span class="where" id="probeWhere"></span>
-          <button class="probe-close" id="probeClose" aria-label="Close point forecast">×</button>
+          <button class="probe-close" id="probeClose" aria-label="Zapri napoved za točko">×</button>
         </div>
         <p class="probe-title" id="probeTitle"></p>
-        <svg id="probeChart" role="img" aria-label="Forecast at the selected point"></svg>
+        <svg id="probeChart" role="img" aria-label="Napoved za izbrano točko"></svg>
       </section>
     </div>
 
     <div class="timebar">
-      <button class="play" id="play" aria-label="Play animation">
+      <button class="play" id="play" aria-label="Predvajaj animacijo">
         <svg viewBox="0 0 16 16" id="playIcon"><path d="M4 2.5v11l9-5.5z"/></svg>
       </button>
       <div class="when" aria-live="off">
@@ -280,7 +280,7 @@ button, select, input { font: inherit; color: inherit; }
         <div class="meta" id="whenMeta">–</div>
       </div>
       <div class="track">
-        <input type="range" id="time" min="0" max="48" step="1" value="0" aria-label="Forecast time">
+        <input type="range" id="time" min="0" max="48" step="1" value="0" aria-label="Čas napovedi">
         <div class="days" id="days"></div>
       </div>
     </div>
@@ -295,30 +295,30 @@ const TEMP = [[-40,"#3b0f4d"],[-30,"#5a2a8c"],[-20,"#3a52c2"],[-10,"#4f9be0"],[-
   [5,"#bfe3a3"],[10,"#f2e58a"],[15,"#f7c35c"],[20,"#f19447"],[25,"#e0603a"],[30,"#c4303a"],[35,"#8f1238"],[40,"#5c0a3a"],[45,"#3a0228"]]
   .map(([v,c]) => [v, c + "e6"]);
 const STYLE = {
-  t2m:    {group:"Surface", stops: TEMP, ticks:[-20,-10,0,10,20,30,40], dec:1, legend:"Air temperature 2 m above ground."},
-  wind10: {group:"Surface", stops:[[0,"#7fb8d000"],[3,"#7fb8d050"],[6,"#7fc3c9a0"],[9,"#62b07ec8"],[12,"#a4c752dd"],[15,"#f0d14aee"],[18,"#f39b3aee"],[22,"#e2543cee"],[27,"#b72a5bee"],[33,"#7a2a8aee"],[45,"#3a1450ee"]],
-           ticks:[0,6,12,18,24,33], dec:1, flow:"wind10", legend:"Mean wind 10 m above ground."},
-  gust:   {group:"Surface", stops:[[0,"#7fb8d000"],[8,"#7fc3c960"],[12,"#62b07ec0"],[17.2,"#e9cf45e0"],[20.8,"#f39b3aee"],[24.5,"#e2543cee"],[28.5,"#b72a5bee"],[32.7,"#7a2a8aee"],[50,"#3a1450ee"]],
-           ticks:[0,10.8,17.2,24.5,32.7], dec:0, legend:"Strongest gust in the previous 3 h. Ticks: Beaufort 6, 8, 10, 12."},
-  msl:    {group:"Surface", stops:[[960,"#5b3f8cc8"],[980,"#6b7fd0b0"],[1000,"#a9c4e070"],[1013,"#ffffff00"],[1020,"#f0dcb060"],[1030,"#e8b878a0"],[1045,"#c98a4ac0"]],
-           ticks:[970,990,1013,1030,1045], dec:0, legend:"Air pressure reduced to sea level."},
-  tcc:    {group:"Surface", stops:[[0,"#8995a000"],[30,"#8995a070"],[70,"#a9b4bdc8"],[100,"#c8d0d6f0"]], ticks:[0,25,50,75,100], dec:0, legend:"Fraction of the sky covered by cloud at any level."},
-  precip: {group:"Precipitation", scale:"sqrt", stops:[[0,"#9fd0ff00"],[0.1,"#9fd0ff00"],[0.3,"#9fd0ffb0"],[1,"#4fa3f0d0"],[3,"#1f6fd8e0"],[6,"#2bb673ee"],[10,"#f4d03fee"],[20,"#f08a24f0"],[40,"#d7263df0"],[80,"#9b1fa8f0"],[150,"#4b0a6bf0"]],
-           ticks:[1,5,20,50,100], dec:1, legend:"Rain, snow and sleet in the previous 3 h, as water."},
-  snow:   {group:"Precipitation", scale:"sqrt", stops:[[0,"#e8f0ff00"],[0.1,"#e8f0ff00"],[0.3,"#cfe0ffb8"],[1,"#9db8f5d8"],[3,"#6f7fe0e6"],[6,"#8a4fd0ee"],[12,"#c03fb0ee"],[25,"#ff7fd0f0"],[100,"#ffe0f4f0"]],
-           ticks:[1,5,20,50], dec:1, legend:"Snowfall in the previous 3 h, as water. Very roughly 1 mm ≈ 1 cm of fresh snow."},
-  tcwv:   {group:"Precipitation", stops:[[0,"#f5e6c8e0"],[10,"#e9c98ee0"],[20,"#b8d39ae0"],[30,"#5fb8a8e0"],[40,"#2f86c4e6"],[50,"#2d4fa6e6"],[60,"#4b2a8ae6"],[80,"#2a0d4de6"]],
-           ticks:[0,10,20,30,40,50,60], dec:0, legend:"All water vapour in a column of air above each point."},
-  cape:   {group:"Upper air", scale:"sqrt", stops:[[0,"#ffe08a00"],[100,"#ffe08a00"],[250,"#ffe08aa8"],[500,"#f7b34fd0"],[1000,"#ec6f3ae6"],[2000,"#c8264aee"],[3500,"#8a1a7aee"],[5000,"#4a0a5aee"]],
-           ticks:[500,1000,2000,4000], dec:0, legend:"Energy available to thunderstorm updrafts (most unstable parcel)."},
-  t850:   {group:"Upper air", stops: TEMP, ticks:[-30,-20,-10,0,10,20], dec:1, legend:"Temperature at about 1.5 km. 0 °C here is a common rain/snow pointer."},
-  z500:   {group:"Upper air", stops:[[480,"#3b2a7ae0"],[500,"#3a52c2e0"],[520,"#4f9be0e0"],[540,"#bfe6e0e0"],[556,"#f2e58ae0"],[568,"#f19447e0"],[580,"#d24a3ae0"],[600,"#8f1238e0"]],
-           ticks:[500,520,540,560,580], dec:0, contour:8, legend:"Height of the 500 hPa surface, in decametres. Troughs are low, ridges high."},
-  jet250: {group:"Upper air", stops:[[0,"#9fc4e000"],[25,"#9fc4e000"],[35,"#9fc4e0a0"],[45,"#5f9fd6d0"],[55,"#3f6fc8e0"],[65,"#7a4fc0ee"],[80,"#c04fa0ee"],[95,"#e8506aee"],[120,"#f5a05aee"]],
-           ticks:[30,50,70,90,110], dec:0, flow:"jet250", legend:"Wind at about 10 km (250 hPa). The jet stream steers lows."},
+  t2m:    {group:"Pri tleh", stops: TEMP, ticks:[-20,-10,0,10,20,30,40], dec:1, legend:"Temperatura zraka 2 m nad tlemi."},
+  wind10: {group:"Pri tleh", stops:[[0,"#7fb8d000"],[3,"#7fb8d050"],[6,"#7fc3c9a0"],[9,"#62b07ec8"],[12,"#a4c752dd"],[15,"#f0d14aee"],[18,"#f39b3aee"],[22,"#e2543cee"],[27,"#b72a5bee"],[33,"#7a2a8aee"],[45,"#3a1450ee"]],
+           ticks:[0,6,12,18,24,33], dec:1, flow:"wind10", legend:"Povprečna hitrost vetra 10 m nad tlemi."},
+  gust:   {group:"Pri tleh", stops:[[0,"#7fb8d000"],[8,"#7fc3c960"],[12,"#62b07ec0"],[17.2,"#e9cf45e0"],[20.8,"#f39b3aee"],[24.5,"#e2543cee"],[28.5,"#b72a5bee"],[32.7,"#7a2a8aee"],[50,"#3a1450ee"]],
+           ticks:[0,10.8,17.2,24.5,32.7], dec:0, legend:"Najmočnejši sunek v zadnjih 3 urah. Oznake: 6, 8, 10 in 12 po Beaufortu."},
+  msl:    {group:"Pri tleh", stops:[[960,"#5b3f8cc8"],[980,"#6b7fd0b0"],[1000,"#a9c4e070"],[1013,"#ffffff00"],[1020,"#f0dcb060"],[1030,"#e8b878a0"],[1045,"#c98a4ac0"]],
+           ticks:[970,990,1013,1030,1045], dec:0, legend:"Zračni tlak, preračunan na morsko gladino."},
+  tcc:    {group:"Pri tleh", stops:[[0,"#8995a000"],[30,"#8995a070"],[70,"#a9b4bdc8"],[100,"#c8d0d6f0"]], ticks:[0,25,50,75,100], dec:0, legend:"Delež neba, ki ga prekrivajo oblaki na kateri koli višini."},
+  precip: {group:"Padavine", scale:"sqrt", stops:[[0,"#9fd0ff00"],[0.1,"#9fd0ff00"],[0.3,"#9fd0ffb0"],[1,"#4fa3f0d0"],[3,"#1f6fd8e0"],[6,"#2bb673ee"],[10,"#f4d03fee"],[20,"#f08a24f0"],[40,"#d7263df0"],[80,"#9b1fa8f0"],[150,"#4b0a6bf0"]],
+           ticks:[1,5,20,50,100], dec:1, legend:"Dež, sneg in dež s snegom v zadnjih 3 urah, kot količina vode."},
+  snow:   {group:"Padavine", scale:"sqrt", stops:[[0,"#e8f0ff00"],[0.1,"#e8f0ff00"],[0.3,"#cfe0ffb8"],[1,"#9db8f5d8"],[3,"#6f7fe0e6"],[6,"#8a4fd0ee"],[12,"#c03fb0ee"],[25,"#ff7fd0f0"],[100,"#ffe0f4f0"]],
+           ticks:[1,5,20,50], dec:1, legend:"Sneženje v zadnjih 3 urah, kot količina vode. Zelo grobo velja 1 mm ≈ 1 cm novega snega."},
+  tcwv:   {group:"Padavine", stops:[[0,"#f5e6c8e0"],[10,"#e9c98ee0"],[20,"#b8d39ae0"],[30,"#5fb8a8e0"],[40,"#2f86c4e6"],[50,"#2d4fa6e6"],[60,"#4b2a8ae6"],[80,"#2a0d4de6"]],
+           ticks:[0,10,20,30,40,50,60], dec:0, legend:"Vsa vodna para v stolpcu zraka nad posamezno točko."},
+  cape:   {group:"Višinski podatki", scale:"sqrt", stops:[[0,"#ffe08a00"],[100,"#ffe08a00"],[250,"#ffe08aa8"],[500,"#f7b34fd0"],[1000,"#ec6f3ae6"],[2000,"#c8264aee"],[3500,"#8a1a7aee"],[5000,"#4a0a5aee"]],
+           ticks:[500,1000,2000,4000], dec:0, legend:"Energija, ki je na voljo za nevihtne vzgornike (najbolj nestabilna zračna gmota)."},
+  t850:   {group:"Višinski podatki", stops: TEMP, ticks:[-30,-20,-10,0,10,20], dec:1, legend:"Temperatura na približno 1,5 km. 0 °C na tej višini je pogost pokazatelj meje med dežjem in snegom."},
+  z500:   {group:"Višinski podatki", stops:[[480,"#3b2a7ae0"],[500,"#3a52c2e0"],[520,"#4f9be0e0"],[540,"#bfe6e0e0"],[556,"#f2e58ae0"],[568,"#f19447e0"],[580,"#d24a3ae0"],[600,"#8f1238e0"]],
+           ticks:[500,520,540,560,580], dec:0, contour:8, legend:"Višina ploskve 500 hPa v dekametrih. Višinske doline so nizko, grebeni visoko."},
+  jet250: {group:"Višinski podatki", stops:[[0,"#9fc4e000"],[25,"#9fc4e000"],[35,"#9fc4e0a0"],[45,"#5f9fd6d0"],[55,"#3f6fc8e0"],[65,"#7a4fc0ee"],[80,"#c04fa0ee"],[95,"#e8506aee"],[120,"#f5a05aee"]],
+           ticks:[30,50,70,90,110], dec:0, flow:"jet250", legend:"Veter na približno 10 km (250 hPa). Vetrovni stržen usmerja ciklone."},
 };
-const GROUP_ORDER = ["Surface", "Precipitation", "Upper air"];
-const WIND_UNITS = {ms:{f:1, u:"m/s"}, kmh:{f:3.6, u:"km/h"}, kt:{f:1.943844, u:"kt"}};
+const GROUP_ORDER = ["Pri tleh", "Padavine", "Višinski podatki"];
+const WIND_UNITS = {ms:{f:1, u:"m/s"}, kmh:{f:3.6, u:"km/h"}, kt:{f:1.943844, u:"vozli"}};
 
 // ======================================================================== projection
 // Lambert conformal conic, standard parallels 35°N and 65°N, centred on 12°E 50°N (units: earth radii).
@@ -408,7 +408,7 @@ function loadLayer(id) {
   }).catch((e) => {
     btn && btn.classList.remove("loading");
     delete S.loading[id];
-    showStatus(`Could not load ${L.name}: ${e.message}. Try again.`);
+    showStatus(`Sloja ${L.name} ni bilo mogoče naložiti: ${e.message}. Poskusi znova.`);
     throw e;
   });
   return S.loading[id];
@@ -624,7 +624,7 @@ function renderLines() {
     ctx.fillStyle = ink; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     for (const e of res.ext) {
       const [x, y] = gridToScreen(e.i, e.j); if (x < 10 || y < 10 || x > S.W - 10 || y > S.H - 10) continue;
-      ctx.font = `700 22px ${css("--font-display")}`; ctx.fillText(e.low ? "L" : "H", x, y - 6);
+      ctx.font = `700 22px ${css("--font-display")}`; ctx.fillText(e.low ? "N" : "V", x, y - 6);
       ctx.font = `500 11px ${css("--font-data")}`; ctx.fillText(Math.round(e.v), x, y + 11);
     }
   }
@@ -742,7 +742,7 @@ function updateTime() {
   $("whenMeta").textContent = `T+${pad(step, 3)} h · ${pad(t.getUTCHours())} UTC`;
   $("time").value = S.frame;
   const d = S.data[S.layer];
-  if (d && d.missing.has(S.frame)) showStatus(S.layer === "precip" || S.layer === "snow" ? "Totals start at +3 h. Step forward to see them." : "No data for this time in the model output.");
+  if (d && d.missing.has(S.frame)) showStatus(S.layer === "precip" || S.layer === "snow" ? "Vsote so na voljo od +3 h naprej." : "Za ta čas v modelu ni podatkov.");
   else if (d) showStatus("");
 }
 
@@ -754,7 +754,7 @@ async function setLayer(id) {
   S.layer = id; store.set("layer", id);
   document.querySelectorAll(".layer-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.layer === id)));
   drawLegend(); render();
-  if (!S.data[id]) showStatus(`Loading ${S.meta.layers.find((l) => l.id === id).name}…`);
+  if (!S.data[id]) showStatus(`Nalaganje: ${S.meta.layers.find((l) => l.id === id).name} …`);
   try { await loadLayer(id); } catch { return; }
   if (S.layer !== id) return;
   showStatus(""); render(); updateFlow();
@@ -767,7 +767,7 @@ function setFrame(f) {
 
 function togglePlay(on = !S.playing) {
   S.playing = on; clearInterval(S.timer);
-  $("play").setAttribute("aria-label", on ? "Pause animation" : "Play animation");
+  $("play").setAttribute("aria-label", on ? "Ustavi animacijo" : "Predvajaj animacijo");
   $("playIcon").innerHTML = on ? '<path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/>' : '<path d="M4 2.5v11l9-5.5z"/>';
   if (on) S.timer = setInterval(() => setFrame(S.frame + 1), 420);
 }
@@ -797,9 +797,9 @@ function renderProbe() {
   if (!S.probe) { box.hidden = true; return; }
   const d = S.data[S.layer]; box.hidden = false;
   const {lon, lat} = S.probe;
-  $("probeWhere").textContent = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}`;
+  $("probeWhere").textContent = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "S" : "J"} ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "V" : "Z"}`;
   const L = S.meta.layers.find((l) => l.id === S.layer);
-  $("probeTitle").textContent = `${L.name}, next ${Math.round(S.meta.steps.at(-1) / 24)} days`;
+  $("probeTitle").textContent = `${L.name}, naslednjih ${Math.round(S.meta.steps.at(-1) / 24)} dni`;
   const svg = $("probeChart");
   if (!d) { $("probeVal").textContent = "…"; svg.innerHTML = ""; return; }
   const v = valueAt(S.layer, S.frame, lon, lat);
@@ -947,10 +947,10 @@ async function boot() {
   placePanels(); matchMedia("(max-width: 760px)").addEventListener("change", placePanels);
   try {
     S.meta = await (await fetch("data/meta.json", {cache: "no-cache"})).json();
-  } catch (e) { showStatus("Could not load the forecast index (data/meta.json). Run build.py first."); return; }
+  } catch (e) { showStatus("Kazala napovedi (data/meta.json) ni bilo mogoče naložiti."); return; }
   const run = new Date(S.meta.run);
-  $("runLabel").textContent = `IFS HRES · ${pad(run.getUTCHours())} UTC run, ${dayFmt.format(run)}`;
-  $("builtLabel").textContent = `Data fetched ${new Date(S.meta.built).toLocaleString()}.`;
+  $("runLabel").textContent = `IFS HRES · zagon ${pad(run.getUTCHours())} UTC, ${dayFmt.format(run)}`;
+  $("builtLabel").textContent = `Podatki preneseni ${new Date(S.meta.built).toLocaleString()}.`;
   $("time").max = S.meta.steps.length - 1;
   const saved = store.get("layer"); if (saved && STYLE[saved] && S.meta.layers.some((l) => l.id === saved)) S.layer = saved;
   S.windUnit = WIND_UNITS[store.get("wind")] ? store.get("wind") : "ms"; $("optWind").value = S.windUnit;
