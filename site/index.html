@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Europe Forecast Atlas</title>
+<title>Vremenska napoved za Evropo</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Animated ECMWF IFS forecast maps for Europe, from ECMWF Open Data.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -207,26 +207,26 @@ button, select, input { font: inherit; color: inherit; }
 <div class="app">
   <aside class="rail" id="rail">
     <header class="brand">
-      <h1>Europe Forecast Atlas</h1>
-      <p class="run" id="runLabel">Loading forecast…</p>
+      <h1>Vremenska napoved za Evropo</h1>
+      <p class="run" id="runLabel">Nalaganje vremenske napovedi …</p>
     </header>
     <nav class="layers" id="layers" aria-label="Map layer"></nav>
 
     <section class="legend desk-only" id="legendDesk" aria-label="Colour scale">
-      <p class="group-label" id="legendTitle">Scale</p>
+      <p class="group-label" id="legendTitle">Merilo</p>
       <canvas id="legendBar" width="440" height="24"></canvas>
       <div class="ticks" id="legendTicks"></div>
       <p class="legend-note" id="legendNote"></p>
     </section>
 
     <section class="options desk-only" id="optionsDesk" aria-label="Overlays and units">
-      <p class="group-label">Overlays</p>
-      <label class="opt"><input type="checkbox" id="optIsobars" checked> Isobars and pressure centres</label>
-      <label class="opt"><input type="checkbox" id="optFlow"> Wind flow (10 m)</label>
-      <label class="opt"><input type="checkbox" id="optBorders" checked> Country borders</label>
-      <label class="opt">Wind in
+      <p class="group-label">Prekrivanje</p>
+      <label class="opt"><input type="checkbox" id="optIsobars" checked> Izobare in središča zračnega tlaka</label>
+      <label class="opt"><input type="checkbox" id="optFlow"> Tok vetra (10 m)</label>
+      <label class="opt"><input type="checkbox" id="optBorders" checked> Meje držav</label>
+      <label class="opt">Veter v
         <select id="optWind">
-          <option value="ms">m/s</option><option value="kmh">km/h</option><option value="kt">knots</option>
+          <option value="ms">m/s</option><option value="kmh">km/h</option><option value="kt">vozlih</option>
         </select>
       </label>
     </section>
