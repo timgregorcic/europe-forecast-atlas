@@ -58,15 +58,15 @@ MESSAGES = [
 LAYERS = [
     dict(id="t2m", name="Temperatura 2 m", unit="°C", bits=16, lo=-50, hi=50, kind="scalar"),
     dict(id="precip", name="Padavine (3 h)", unit="mm", bits=16, lo=0, hi=150, kind="scalar", accum=True),
-    dict(id="snow", name="Sneženje (3 h, water eq.)", unit="mm", bits=16, lo=0, hi=100, kind="scalar", accum=True),
-    dict(id="wind10", name="Hitrost vetra 10 m", unit="m/s", bits=8, lo=-60, hi=60, kind="vector"),
-    dict(id="gust", name="Sunki vetra (max, 3 h)", unit="m/s", bits=8, lo=0, hi=80, kind="scalar"),
-    dict(id="msl", name="Povprečni zračni tlak na morski gladini", unit="hPa", bits=16, lo=920, hi=1080, kind="scalar"),
+    dict(id="snow", name="Sneg (3 h, kot voda)", unit="mm", bits=16, lo=0, hi=100, kind="scalar", accum=True),
+    dict(id="wind10", name="Veter 10 m", unit="m/s", bits=8, lo=-60, hi=60, kind="vector"),
+    dict(id="gust", name="Sunki vetra (najv., 3 h)", unit="m/s", bits=8, lo=0, hi=80, kind="scalar"),
+    dict(id="msl", name="Zračni tlak (morska gl.)", unit="hPa", bits=16, lo=920, hi=1080, kind="scalar"),
     dict(id="tcc", name="Oblačnost", unit="%", bits=8, lo=0, hi=100, kind="scalar"),
     dict(id="tcwv", name="Vodna para (stolpec)", unit="kg/m²", bits=8, lo=0, hi=80, kind="scalar"),
-    dict(id="cape", name="CAPE (najbolj nestabilno)", unit="J/kg", bits=8, lo=0, hi=5000, kind="scalar"),
+    dict(id="cape", name="CAPE (najbolj nestabilna)", unit="J/kg", bits=8, lo=0, hi=5000, kind="scalar"),
     dict(id="t850", name="Temperatura 850 hPa", unit="°C", bits=16, lo=-50, hi=40, kind="scalar"),
-    dict(id="z500", name="Geopotencialna višina 500 hPa", unit="dam", bits=16, lo=450, hi=620, kind="scalar"),
+    dict(id="z500", name="Geopotencial 500 hPa", unit="dam", bits=16, lo=450, hi=620, kind="scalar"),
     dict(id="jet250", name="Vetrovni stržen 250 hPa", unit="m/s", bits=8, lo=-120, hi=120, kind="vector"),
 ]
 
