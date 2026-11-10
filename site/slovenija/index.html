@@ -1,0 +1,1085 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vremenska napoved za Slovenijo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Animirani zemljevidi napovedi modelov ALADIN/SI (ARSO) in ICON-D2 (DWD) za Slovenijo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a chart table. Map fills the stage; a narrow instrument rail on the left
+   (a top strip on phones); the time axis runs along the bottom like a synoptic chart series. */
+:root {
+  --paper: #e9edee;      /* rail + timebar ground: cool chart paper */
+  --sheet: #f6f8f8;      /* raised surfaces (probe, tooltip) */
+  --ink: #17242b;        /* text, isobars */
+  --ink-2: #4c5b63;      /* secondary text */
+  --rule: #c3ccd0;       /* hairlines */
+  --accent: #0f5f8c;     /* active layer, timeline */
+  --accent-ink: #ffffff;
+  --sea: #c9d6dc;        /* map base */
+  --land: #e4e2d8;
+  --void: #d7dddf;       /* outside the data domain */
+  --coast: #24343c;
+  --border: #5f6f77;
+  --isobar: #1b2a31;
+  --flow: rgba(20, 32, 38, 0.75);
+  --river: #3f7fa8;
+  --town: #17242b;
+  --halo: rgba(246, 248, 248, 0.85);
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #131b20; --sheet: #1a242a; --ink: #e3eaed; --ink-2: #9aabb3; --rule: #2c3a41;
+    --accent: #6fb7e0; --accent-ink: #0b1418;
+    --sea: #17242c; --land: #262c2b; --void: #0f1519;
+    --coast: #c9d6dc; --border: #7b8b92; --isobar: #e8eef0; --flow: rgba(235, 244, 248, 0.8);
+    --river: #6fa9cf; --town: #eef3f5; --halo: rgba(19, 27, 32, 0.8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #131b20; --sheet: #1a242a; --ink: #e3eaed; --ink-2: #9aabb3; --rule: #2c3a41;
+  --accent: #6fb7e0; --accent-ink: #0b1418;
+  --sea: #17242c; --land: #262c2b; --void: #0f1519;
+  --coast: #c9d6dc; --border: #7b8b92; --isobar: #e8eef0; --flow: rgba(235, 244, 248, 0.8);
+  --river: #6fa9cf; --town: #eef3f5; --halo: rgba(19, 27, 32, 0.8);
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--font-body); font-size: 14px; line-height: 1.4;
+  overflow: hidden;
+}
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+}
+
+/* ---------- rail ---------- */
+.rail {
+  display: flex; flex-direction: column; gap: 18px;
+  padding-block: 18px 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: 16px;
+  border-right: 1px solid var(--rule);
+  overflow-y: auto; min-height: 0;
+}
+.brand h1 {
+  margin: 0; font-family: var(--font-display); font-weight: 700;
+  font-size: 26px; line-height: 1; letter-spacing: 0.01em; text-wrap: balance;
+}
+.brand .run {
+  margin: 6px 0 0; font-family: var(--font-data); font-size: 11.5px; color: var(--ink-2);
+}
+.group-label {
+  font-family: var(--font-display); font-weight: 600; font-size: 12px;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-2);
+  margin: 0 0 4px;
+}
+.layers { display: flex; flex-direction: column; gap: 12px; }
+.layer-group ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.layer-btn {
+  width: 100%; text-align: left; background: none; border: 0; cursor: pointer;
+  padding: 5px 8px 5px 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  border-left: 2px solid transparent; color: var(--ink);
+}
+.layer-btn:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.layer-btn[aria-pressed="true"] { border-left-color: var(--accent); color: var(--accent); font-weight: 600; }
+.layer-btn .u { font-family: var(--font-data); font-size: 11px; color: var(--ink-2); font-weight: 400; }
+.layer-btn.loading .u::after { content: " …"; }
+
+.legend { display: flex; flex-direction: column; gap: 4px; }
+.legend canvas { width: 100%; height: 12px; display: block; }
+.ticks { position: relative; height: 14px; font-family: var(--font-data); font-size: 10.5px; color: var(--ink-2); }
+.ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.legend-note { margin: 2px 0 0; font-size: 12px; color: var(--ink-2); }
+
+.options { display: flex; flex-direction: column; gap: 6px; }
+.opt { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.opt input { accent-color: var(--accent); }
+.opt select {
+  background: var(--sheet); border: 1px solid var(--rule); padding: 2px 4px; border-radius: 2px;
+}
+.credits { margin-top: auto; font-size: 11.5px; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; }
+.credits p { margin: 0; }
+.credits a { color: inherit; }
+.models { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule); }
+.model-btn { background: none; border: 0; cursor: pointer; padding: 6px 4px 5px; text-align: center; color: var(--ink-2); }
+.model-btn + .model-btn { border-left: 1px solid var(--rule); }
+.model-btn b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: 0.02em; color: var(--ink); line-height: 1.1; }
+.model-btn small { font-family: var(--font-data); font-size: 10.5px; }
+.model-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.model-btn[aria-pressed="true"] b { color: var(--accent-ink); }
+.crosslink { display: inline-block; margin-top: 6px; font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: 0.04em; color: var(--accent); text-decoration: none; }
+.crosslink:hover { text-decoration: underline; }
+
+/* ---------- stage ---------- */
+.stage { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
+.map { position: relative; overflow: hidden; touch-action: none; background: var(--void); cursor: crosshair; }
+.map canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#field { image-rendering: auto; }
+.map .legend canvas { position: static; inset: auto; height: 12px; }
+.map-tools {
+  position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: 12px;
+  display: flex; flex-direction: column; border: 1px solid var(--rule); background: var(--sheet);
+}
+.map-tools button {
+  width: 34px; height: 34px; border: 0; background: none; cursor: pointer;
+  font-family: var(--font-display); font-size: 18px; font-weight: 600;
+}
+.map-tools button + button { border-top: 1px solid var(--rule); }
+.map-tools button:hover { color: var(--accent); }
+.status {
+  position: absolute; left: 12px; top: 12px; max-width: min(360px, calc(100% - 80px));
+  background: var(--sheet); border: 1px solid var(--rule); padding: 6px 10px; font-size: 12.5px;
+}
+.tip {
+  position: absolute; pointer-events: none; background: var(--sheet); border: 1px solid var(--rule);
+  padding: 3px 7px; font-family: var(--font-data); font-size: 12px; white-space: nowrap;
+  transform: translate(12px, -50%);
+}
+
+.timebar {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 14px;
+  padding-block: 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-left: 16px; padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-top: 1px solid var(--rule);
+}
+.play {
+  width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); display: grid; place-items: center;
+}
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.when { min-width: 168px; }
+.when .local { font-family: var(--font-display); font-weight: 600; font-size: 20px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.when .meta { font-family: var(--font-data); font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.track { position: relative; padding-bottom: 16px; min-width: 0; }
+.track input[type=range] { width: 100%; margin: 0; accent-color: var(--accent); }
+.days { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; font-family: var(--font-display); font-size: 12px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.days span { position: absolute; white-space: nowrap; padding-left: 4px; border-left: 1px solid var(--rule); }
+
+/* ---------- probe (meteogram) ---------- */
+.probe {
+  position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); bottom: 84px;
+  width: min(380px, calc(100% - 24px));
+  background: var(--sheet); border: 1px solid var(--rule); padding: 10px 12px 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+}
+.probe-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.probe-head .val { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
+.probe-head .where { font-family: var(--font-data); font-size: 11px; color: var(--ink-2); }
+.probe-close { background: none; border: 0; cursor: pointer; font-size: 18px; color: var(--ink-2); padding: 0 2px; }
+.probe-title { font-size: 12px; color: var(--ink-2); margin: 2px 0 4px; }
+.probe svg { display: block; width: 100%; height: 120px; cursor: pointer; }
+.probe svg text { font-family: var(--font-data); font-size: 10px; fill: var(--ink-2); }
+
+.mobile-only { display: none; }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .rail {
+    border-right: 0; border-bottom: 1px solid var(--rule); gap: 8px;
+    padding-block: 10px 8px; padding-right: max(16px, env(safe-area-inset-right, 0px));
+    overflow: visible;
+  }
+  .brand { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .brand h1 { font-size: 21px; }
+  .brand .run { margin: 0; text-align: right; }
+  .brand { flex-wrap: wrap; }
+  .brand .crosslink { flex-basis: 100%; margin-top: 0; }
+  .models { order: -1; }
+  .model-btn { padding: 3px 4px; }
+  .model-btn b { font-size: 14px; display: inline; }
+  .model-btn small { display: none; }
+  .layers { flex-direction: row; overflow-x: auto; gap: 14px; scrollbar-width: none; margin-right: -16px; padding-right: 16px; }
+  .layer-group { flex: none; }
+  .layer-group ul { flex-direction: row; gap: 4px; }
+  .layer-btn { width: auto; white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent; padding: 3px 6px; }
+  .layer-btn[aria-pressed="true"] { border-bottom-color: var(--accent); }
+  .layer-btn .u { display: none; }
+  .group-label { font-size: 10.5px; }
+  .desk-only { display: none; }
+  .mobile-only { display: block; }
+  details.more summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; font-size: 12px; color: var(--ink-2); }
+  details.more[open] { max-height: 40vh; overflow-y: auto; }
+  details.more > div { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; }
+  .legend-float { position: absolute; left: 10px; top: 10px; width: min(230px, calc(100% - 70px)); background: var(--sheet); border: 1px solid var(--rule); padding: 6px 8px 4px; }
+  .when { min-width: 0; }
+  .when .local { font-size: 17px; }
+  .timebar { grid-template-columns: auto minmax(0, 1fr); row-gap: 6px; }
+  .timebar .track { grid-column: 1 / -1; }
+  .probe { bottom: 76px; }
+}
+@media (min-width: 761px) { .legend-float { display: none; } }
+@media (prefers-reduced-motion: reduce) { .play { transition: none; } }
+</style>
+
+<div class="app">
+  <aside class="rail" id="rail">
+    <header class="brand">
+      <h1>Vremenska napoved za Slovenijo</h1>
+      <p class="run" id="runLabel">Nalaganje vremenske napovedi …</p>
+      <a class="crosslink" href="../">← Evropa (ECMWF)</a>
+    </header>
+    <div class="models" role="group" aria-label="Model">
+      <button class="model-btn" data-model="aladin" aria-pressed="true"><b>ALADIN/SI</b><small>ARSO · ~4–6 km</small></button>
+      <button class="model-btn" data-model="icon" aria-pressed="false"><b>ICON-D2</b><small>DWD · ~2 km</small></button>
+    </div>
+    <nav class="layers" id="layers" aria-label="Sloj zemljevida"></nav>
+
+    <section class="legend desk-only" id="legendDesk" aria-label="Barvna lestvica">
+      <p class="group-label" id="legendTitle">Merilo</p>
+      <canvas id="legendBar" width="440" height="24"></canvas>
+      <div class="ticks" id="legendTicks"></div>
+      <p class="legend-note" id="legendNote"></p>
+    </section>
+
+    <section class="options desk-only" id="optionsDesk" aria-label="Prekrivanje in enote">
+      <p class="group-label">Prekrivanje</p>
+      <label class="opt"><input type="checkbox" id="optIsobars" checked> Izobare in središča zračnega tlaka</label>
+      <label class="opt"><input type="checkbox" id="optFlow"> Tok vetra (10 m)</label>
+      <label class="opt"><input type="checkbox" id="optBorders" checked> Meje držav</label>
+      <label class="opt"><input type="checkbox" id="optTowns" checked> Kraji in reke</label>
+      <label class="opt">Veter v
+        <select id="optWind">
+          <option value="ms">m/s</option><option value="kmh">km/h</option><option value="kt">vozlih</option>
+        </select>
+      </label>
+    </section>
+
+    <footer class="credits desk-only" id="creditsDesk">
+      <p>Samo izračun modela, ne napoved ali opozorilo. Za opozorila glej <a href="https://meteo.arso.gov.si" target="_blank" rel="noopener">ARSO</a> ali <a href="https://meteoalarm.org" target="_blank" rel="noopener">MeteoAlarm</a>.</p>
+      <p>ALADIN/SI: vir <a href="https://meteo.arso.gov.si" target="_blank" rel="noopener">ARSO</a>. ICON-D2: vir <a href="https://opendata.dwd.de" target="_blank" rel="noopener">Deutscher Wetterdienst</a>. Obrezano in pretvorjeno v druge enote. Relief iz modela ICON-D2, meje in reke: Natural Earth.</p>
+      <p>Po zgledu aplikacije <a href="https://github.com/tehoro/weather-explorer-web" target="_blank" rel="noopener">Weather Explorer</a> avtorja Neila Gordona (MIT).</p>
+      <p id="builtLabel"></p>
+    </footer>
+
+    <details class="more mobile-only" id="moreMobile">
+      <summary>Prekrivanje in viri</summary>
+      <div id="moreSlot"></div>
+    </details>
+  </aside>
+
+  <main class="stage">
+    <div class="map" id="map">
+      <canvas id="field"></canvas>
+      <canvas id="lines"></canvas>
+      <canvas id="flow"></canvas>
+      <div class="status" id="status">Nalaganje podatkov …</div>
+      <div class="map-tools">
+        <button id="zoomIn" aria-label="Povečaj">+</button>
+        <button id="zoomOut" aria-label="Pomanjšaj">−</button>
+        <button id="zoomReset" aria-label="Prikaži vso Slovenijo" title="Prikaži vso Slovenijo">⤢</button>
+      </div>
+      <div class="tip" id="tip" hidden></div>
+      <div class="legend legend-float" id="legendFloat" aria-hidden="true">
+        <canvas id="legendBar2" width="440" height="24"></canvas>
+        <div class="ticks" id="legendTicks2"></div>
+      </div>
+      <section class="probe" id="probe" hidden aria-live="polite">
+        <div class="probe-head">
+          <span class="val" id="probeVal">–</span>
+          <span class="where" id="probeWhere"></span>
+          <button class="probe-close" id="probeClose" aria-label="Zapri napoved za točko">×</button>
+        </div>
+        <p class="probe-title" id="probeTitle"></p>
+        <svg id="probeChart" role="img" aria-label="Napoved za izbrano točko"></svg>
+      </section>
+    </div>
+
+    <div class="timebar">
+      <button class="play" id="play" aria-label="Predvajaj animacijo">
+        <svg viewBox="0 0 16 16" id="playIcon"><path d="M4 2.5v11l9-5.5z"/></svg>
+      </button>
+      <div class="when" aria-live="off">
+        <div class="local" id="whenLocal">–</div>
+        <div class="meta" id="whenMeta">–</div>
+      </div>
+      <div class="track">
+        <input type="range" id="time" min="0" max="48" step="1" value="0" aria-label="Čas napovedi">
+        <div class="days" id="days"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+// ======================================================================== layer catalogue
+// Colour stops: [value, "#rrggbb" or "#rrggbbaa"]. "scale: sqrt" spreads small values out.
+const TEMP = [[-40,"#3b0f4d"],[-30,"#5a2a8c"],[-20,"#3a52c2"],[-10,"#4f9be0"],[-5,"#7cc4ea"],[0,"#d6f0e6"],
+  [5,"#bfe3a3"],[10,"#f2e58a"],[15,"#f7c35c"],[20,"#f19447"],[25,"#e0603a"],[30,"#c4303a"],[35,"#8f1238"],[40,"#5c0a3a"],[45,"#3a0228"]]
+  .map(([v,c]) => [v, c + "e6"]);
+const STYLE = {
+  t2m:    {group:"Pri tleh", stops: TEMP, ticks:[-20,-10,0,10,20,30,40], dec:1, legend:"Temperatura zraka 2 m nad tlemi."},
+  rh2m:   {group:"Pri tleh", stops:[[0,"#b9874ae0"],[30,"#d8b77ad8"],[50,"#e9e2b0c8"],[70,"#9fd0a8c8"],[85,"#4fa3c0d8"],[95,"#2f62a8e6"],[100,"#24407ae6"]],
+           ticks:[20,40,60,80,100], dec:0, legend:"Relativna vlažnost zraka 2 m nad tlemi."},
+  wind10: {group:"Pri tleh", stops:[[0,"#7fb8d000"],[2,"#7fb8d040"],[4,"#7fc3c9a0"],[6,"#62b07ec8"],[9,"#a4c752dd"],[12,"#f0d14aee"],[15,"#f39b3aee"],[20,"#e2543cee"],[25,"#b72a5bee"],[33,"#7a2a8aee"],[45,"#3a1450ee"]],
+           ticks:[0,5,10,15,20,30], dec:1, flow:"wind10", legend:"Povprečna hitrost vetra 10 m nad tlemi."},
+  gust:   {group:"Pri tleh", stops:[[0,"#7fb8d000"],[8,"#7fc3c960"],[12,"#62b07ec0"],[17.2,"#e9cf45e0"],[20.8,"#f39b3aee"],[24.5,"#e2543cee"],[28.5,"#b72a5bee"],[32.7,"#7a2a8aee"],[50,"#3a1450ee"]],
+           ticks:[0,10.8,17.2,24.5,32.7], dec:0, legend:"Najmočnejši sunek v zadnji uri. Oznake: 6, 8, 10 in 12 po Beaufortu."},
+  msl:    {group:"Pri tleh", stops:[[985,"#5b3f8cc8"],[995,"#6b7fd0b0"],[1005,"#a9c4e070"],[1013,"#ffffff00"],[1020,"#f0dcb060"],[1028,"#e8b878a0"],[1040,"#c98a4ac0"]],
+           ticks:[990,1000,1013,1025,1035], dec:0, legend:"Zračni tlak, preračunan na morsko gladino. Izobare na 2 hPa."},
+  tcc:    {group:"Pri tleh", stops:[[0,"#8995a000"],[30,"#8995a070"],[70,"#a9b4bdc8"],[100,"#c8d0d6f0"]], ticks:[0,25,50,75,100], dec:0, legend:"Delež neba, ki ga prekrivajo oblaki na kateri koli višini."},
+  precip: {group:"Padavine", scale:"sqrt", stops:[[0,"#9fd0ff00"],[0.1,"#9fd0ff00"],[0.2,"#9fd0ffb0"],[0.5,"#4fa3f0d0"],[1,"#1f6fd8e0"],[2,"#2bb673ee"],[5,"#f4d03fee"],[10,"#f08a24f0"],[20,"#d7263df0"],[40,"#9b1fa8f0"],[100,"#4b0a6bf0"]],
+           ticks:[1,5,10,20,50], dec:1, legend:"Padavine v zadnji uri, kot količina vode."},
+  snow:   {group:"Padavine", scale:"sqrt", stops:[[0,"#e8f0ff00"],[0.5,"#e8f0ff00"],[1,"#cfe0ffb8"],[5,"#9db8f5d8"],[10,"#6f7fe0e6"],[20,"#8a4fd0ee"],[50,"#c03fb0ee"],[100,"#ff7fd0f0"],[400,"#ffe0f4f0"]],
+           ticks:[1,10,20,50,100,200], dec:0, legend:"Skupna višina snežne odeje."},
+  dbz:    {group:"Padavine", stops:[[0,"#a0c8f000"],[8,"#a0c8f000"],[12,"#a0c8f0b0"],[20,"#3f86e0d8"],[28,"#2bb673e6"],[34,"#e8d43aee"],[40,"#f08a24f0"],[46,"#d7263df0"],[52,"#c02ab0f0"],[58,"#7a1aa0f0"],[75,"#f4e6fff0"]],
+           ticks:[10,20,30,40,50,60], dec:0, legend:"Simulirana radarska slika: največja odbojnost v stolpcu."},
+  cape:   {group:"Višinski podatki", scale:"sqrt", stops:[[0,"#ffe08a00"],[50,"#ffe08a00"],[150,"#ffe08aa8"],[400,"#f7b34fd0"],[800,"#ec6f3ae6"],[1500,"#c8264aee"],[2500,"#8a1a7aee"],[4000,"#4a0a5aee"]],
+           ticks:[100,400,1000,2000,4000], dec:0, legend:"Energija, ki je na voljo za nevihtne vzgornike (mešana plast)."},
+  hzerocl:{group:"Višinski podatki", stops:[[0,"#5a2a8ce0"],[500,"#3a52c2e0"],[1000,"#4f9be0e0"],[1500,"#7cc4eae0"],[2000,"#bfe3a3e0"],[2500,"#f2e58ae0"],[3000,"#f7c35ce0"],[3500,"#f19447e0"],[4000,"#e0603ae0"],[5000,"#c4303ae0"]],
+           ticks:[500,1000,2000,3000,4000], dec:0, legend:"Nadmorska višina ničte izoterme (meja 0 °C)."},
+  t850:   {group:"Višinski podatki", stops: TEMP, ticks:[-30,-20,-10,0,10,20], dec:1, legend:"Temperatura na približno 1,5 km. 0 °C na tej višini je pogost pokazatelj meje med dežjem in snegom."},
+  wind850:{group:"Višinski podatki", stops:[[0,"#9fc4e000"],[5,"#9fc4e030"],[10,"#9fc4e0a0"],[15,"#5f9fd6d0"],[20,"#3f6fc8e0"],[30,"#7a4fc0ee"],[40,"#c04fa0ee"],[50,"#e8506aee"],[80,"#f5a05aee"]],
+           ticks:[5,10,20,30,40], dec:0, flow:"wind850", legend:"Veter na približno 1,5 km (850 hPa), nad večino reliefa."},
+  z500:   {group:"Višinski podatki", stops:[[500,"#3a52c2e0"],[520,"#4f9be0e0"],[540,"#bfe6e0e0"],[556,"#f2e58ae0"],[568,"#f19447e0"],[580,"#d24a3ae0"],[600,"#8f1238e0"]],
+           ticks:[520,540,560,580], dec:0, contour:4, legend:"Višina ploskve 500 hPa v dekametrih. Višinske doline so nizko, grebeni visoko."},
+};
+const GROUP_ORDER = ["Pri tleh", "Padavine", "Višinski podatki"];
+const MODELS = {aladin: "ALADIN/SI", icon: "ICON-D2"};
+// Kraji: [ime, dolžina, širina, pomembnost 1 = vedno, 2 = pri večji povečavi]
+const TOWNS = [
+  ["Ljubljana",14.506,46.051,1],["Maribor",15.646,46.557,1],["Celje",15.262,46.236,1],["Kranj",14.355,46.239,1],
+  ["Koper",13.730,45.548,1],["Novo mesto",15.169,45.804,1],["Nova Gorica",13.648,45.956,1],["Murska Sobota",16.166,46.662,1],
+  ["Ptuj",15.870,46.420,2],["Velenje",15.110,46.359,2],["Postojna",14.215,45.776,2],["Kočevje",14.866,45.643,2],
+  ["Jesenice",14.067,46.433,2],["Tolmin",13.733,46.183,2],["Slovenj Gradec",15.080,46.510,2],["Brežice",15.595,45.905,2],
+  ["Ajdovščina",13.910,45.887,2],["Sežana",13.873,45.709,2],["Bovec",13.552,46.338,2],["Črnomelj",15.189,45.571,2],
+  ["Trst",13.776,45.650,1],["Videm",13.235,46.063,1],["Celovec",14.307,46.624,1],["Gradec",15.439,47.071,1],
+  ["Zagreb",15.982,45.815,1],["Reka",14.442,45.327,1],["Beljak",13.850,46.611,2],["Varaždin",16.338,46.305,2],
+  ["Triglav",13.836,46.378,2,"peak"],
+];
+const WIND_UNITS = {ms:{f:1, u:"m/s"}, kmh:{f:3.6, u:"km/h"}, kt:{f:1.943844, u:"vozli"}};
+const STORE = "efasi.";
+
+// ======================================================================== projection
+// Local equirectangular projection centred on Slovenia (x scaled by cos 46°). n = 0: grid north = map up.
+const D2R = Math.PI / 180;
+const LCC = (() => {
+  const lon0 = 14.8, k = Math.cos(46 * D2R);
+  return {
+    n: 0, lon0,
+    fwd(lon, lat) { return [(lon - lon0) * k * D2R, lat * D2R]; },
+    inv(x, y) { return [lon0 + x / k / D2R, y / D2R]; },
+  };
+})();
+
+// ======================================================================== state
+const S = {
+  meta: null, frame: 0, layer: "t2m", playing: false, timer: null,
+  data: {},          // layer id -> {vals | u,v,spd}
+  loading: {},       // layer id -> Promise
+  model: "aladin", relief: null, basemap: null, towns: true,
+  view: {cx: 0, cy: 0, k: 1}, W: 0, H: 0, dpr: 1, RS: 2,
+  look: null,        // field-canvas lookup {gw, gh, fi, fj, base}
+  probe: null,       // {lon, lat}
+  windUnit: "ms", isobars: true, flowOn: false, borders: true,
+};
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k) { try { return localStorage.getItem(STORE + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(STORE + k, v); } catch {} },
+};
+
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function parseColor(c) {
+  const cv = document.createElement("canvas").getContext("2d");
+  cv.fillStyle = c; const s = cv.fillStyle;
+  if (s.startsWith("#")) return [parseInt(s.slice(1,3),16), parseInt(s.slice(3,5),16), parseInt(s.slice(5,7),16)];
+  const m = s.match(/[\d.]+/g); return [+m[0], +m[1], +m[2]];
+}
+
+// ======================================================================== data loading
+async function decodeSprite(url) {
+  const blob = await (await fetch(url)).blob();
+  let bmp;
+  try { bmp = await createImageBitmap(blob, {colorSpaceConversion: "none", premultiplyAlpha: "none"}); }
+  catch { bmp = await createImageBitmap(blob); }
+  const c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height;
+  const ctx = c.getContext("2d", {willReadFrequently: true});
+  ctx.drawImage(bmp, 0, 0);
+  return ctx.getImageData(0, 0, bmp.width, bmp.height).data;
+}
+
+function loadLayer(id) {
+  if (S.data[id]) return Promise.resolve(S.data[id]);
+  if (S.loading[id]) return S.loading[id];
+  const L = S.meta.layers.find((l) => l.id === id);
+  const btn = document.querySelector(`[data-layer="${id}"]`);
+  btn && btn.classList.add("loading");
+  const model = S.model;
+  S.loading[id] = decodeSprite(`data/${model}/${id}.png`).then((px) => {
+    if (model !== S.model) throw new Error("model changed");
+    const N = px.length / 4, span = L.hi - L.lo;
+    let d;
+    if (L.kind === "vector") {
+      const u = new Float32Array(N), v = new Float32Array(N), spd = new Float32Array(N);
+      for (let i = 0; i < N; i++) {
+        u[i] = L.lo + px[i*4] / 255 * span; v[i] = L.lo + px[i*4+1] / 255 * span;
+        spd[i] = Math.hypot(u[i], v[i]);
+      }
+      d = {u, v, vals: spd};
+    } else {
+      const vals = new Float32Array(N);
+      if (L.bits === 16) for (let i = 0; i < N; i++) vals[i] = L.lo + (px[i*4] * 256 + px[i*4+1]) / 65535 * span;
+      else for (let i = 0; i < N; i++) vals[i] = L.lo + px[i*4] / 255 * span;
+      d = {vals};
+    }
+    d.meta = L; d.missing = new Set(L.missing);
+    S.data[id] = d;
+    btn && btn.classList.remove("loading");
+    return d;
+  }).catch((e) => {
+    btn && btn.classList.remove("loading");
+    delete S.loading[id];
+    showStatus(`Sloja ${L.name} ni bilo mogoče naložiti: ${e.message}. Poskusi znova.`);
+    throw e;
+  });
+  return S.loading[id];
+}
+
+// ======================================================================== colour LUT
+function buildLUT(id) {
+  const st = STYLE[id], tf = st.scale === "sqrt" ? Math.sqrt : (x) => x;
+  const stops = st.stops.map(([v, c]) => {
+    const h = c.slice(1);
+    return [tf(Math.max(0, v - (st.scale === "sqrt" ? 0 : 0))) , parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16), h.length > 6 ? parseInt(h.slice(6,8),16) : 255];
+  });
+  if (st.scale !== "sqrt") stops.forEach((s, i) => s[0] = st.stops[i][0]);
+  const t0 = stops[0][0], t1 = stops[stops.length - 1][0], n = 1024, lut = new Uint8ClampedArray(n * 4);
+  for (let k = 0; k < n; k++) {
+    const t = t0 + (t1 - t0) * k / (n - 1);
+    let j = 1; while (j < stops.length - 1 && stops[j][0] < t) j++;
+    const a = stops[j-1], b = stops[j], f = b[0] === a[0] ? 0 : Math.min(1, Math.max(0, (t - a[0]) / (b[0] - a[0])));
+    for (let c = 0; c < 4; c++) lut[k*4+c] = a[c+1] + (b[c+1] - a[c+1]) * f;
+  }
+  return {lut, t0, t1, n, tf: st.scale === "sqrt" ? (v) => Math.sqrt(Math.max(0, v)) : (v) => v};
+}
+const LUTS = {};
+const lutFor = (id) => LUTS[id] || (LUTS[id] = buildLUT(id));
+
+// ======================================================================== view + lookup
+function fitEurope() {
+  const pts = [[13.25,45.35],[16.65,45.35],[13.25,46.95],[16.65,46.95]].map(([lo,la]) => LCC.fwd(lo, la));
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  S.view.cx = (x0 + x1) / 2; S.view.cy = (y0 + y1) / 2;
+  S.view.k = Math.min(S.W / (x1 - x0), S.H / (y1 - y0)) * 0.96;
+}
+const toScreen = (x, y) => [S.W / 2 + (x - S.view.cx) * S.view.k, S.H / 2 - (y - S.view.cy) * S.view.k];
+const toProj = (sx, sy) => [S.view.cx + (sx - S.W / 2) / S.view.k, S.view.cy - (sy - S.H / 2) / S.view.k];
+
+function gridIndex(lon, lat) {
+  const g = S.meta.grid;
+  return [(lon - g.west) / g.dx, (g.north - lat) / g.dy];
+}
+
+function buildLookup() {
+  const g = S.meta.grid, RS = S.RS;
+  const gw = Math.ceil(S.W / RS), gh = Math.ceil(S.H / RS), N = gw * gh;
+  const fi = new Float32Array(N), fj = new Float32Array(N), base = new Uint8ClampedArray(N * 4), shade = new Float32Array(N).fill(1);
+  const R = S.relief;
+  const sea = parseColor(css("--sea")), land = parseColor(css("--land")), vd = parseColor(css("--void"));
+  for (let y = 0, p = 0; y < gh; y++) for (let x = 0; x < gw; x++, p++) {
+    const [px, py] = toProj((x + 0.5) * RS, (y + 0.5) * RS);
+    const [lon, lat] = LCC.inv(px, py);
+    let i = (lon - g.west) / g.dx, j = (g.north - lat) / g.dy;
+    if (!(i >= 0 && j >= 0 && i <= g.nx - 1 && j <= g.ny - 1)) { fi[p] = -1; base.set([vd[0], vd[1], vd[2], 255], p * 4); continue; }
+    fi[p] = i; fj[p] = j;
+    let m = 1;
+    if (R) {
+      const ri = (lon - R.g.west) / R.g.dx, rj = (R.g.north - lat) / R.g.dy;
+      if (ri >= 0 && rj >= 0 && ri <= R.g.nx - 1 && rj <= R.g.ny - 1) {
+        m = sampleGrid(R.land, R.g, ri, rj);
+        shade[p] = 0.55 + 0.72 * sampleGrid(R.shade, R.g, ri, rj) * m + 0.45 * (1 - m);
+      }
+    }
+    base[p*4] = sea[0] + (land[0] - sea[0]) * m; base[p*4+1] = sea[1] + (land[1] - sea[1]) * m;
+    base[p*4+2] = sea[2] + (land[2] - sea[2]) * m; base[p*4+3] = 255;
+  }
+  const fc = $("field"); fc.width = gw; fc.height = gh;
+  S.look = {gw, gh, fi, fj, base, shade, img: fc.getContext("2d").createImageData(gw, gh)};
+}
+
+function sampleGrid(arr, g, i, j) {
+  const nx = g.nx, i0 = Math.min(Math.floor(i), nx - 2), j0 = Math.min(Math.floor(j), g.ny - 2), fx = i - i0, fy = j - j0, k = j0 * nx + i0;
+  return (arr[k] * (1 - fx) + arr[k+1] * fx) * (1 - fy) + (arr[k+nx] * (1 - fx) + arr[k+nx+1] * fx) * fy;
+}
+function sample(arr, off, i, j) {
+  const g = S.meta.grid, nx = g.nx;
+  const i0 = Math.min(Math.floor(i), g.nx - 2), j0 = Math.min(Math.floor(j), g.ny - 2);
+  const fx = i - i0, fy = j - j0, k = off + j0 * nx + i0;
+  return (arr[k] * (1 - fx) + arr[k+1] * fx) * (1 - fy) + (arr[k+nx] * (1 - fx) + arr[k+nx+1] * fx) * fy;
+}
+
+// ======================================================================== render: field
+function renderField() {
+  const lk = S.look, d = S.data[S.layer]; if (!lk) return;
+  const out = lk.img.data; out.set(lk.base);
+  if (d && !d.missing.has(S.frame)) {
+    const g = S.meta.grid, off = S.frame * g.nx * g.ny, {lut, t0, t1, n, tf} = lutFor(S.layer), vals = d.vals;
+    const scl = (n - 1) / (t1 - t0);
+    for (let p = 0, N = lk.fi.length; p < N; p++) {
+      const i = lk.fi[p]; if (i < 0) continue;
+      let k = Math.round((tf(sample(vals, off, i, lk.fj[p])) - t0) * scl);
+      k = k < 0 ? 0 : k >= n ? n - 1 : k; k *= 4;
+      const a = lut[k+3] / 255, q = p * 4;
+      out[q] += (lut[k] - out[q]) * a; out[q+1] += (lut[k+1] - out[q+1]) * a; out[q+2] += (lut[k+2] - out[q+2]) * a;
+    }
+  }
+  for (let p = 0, N = lk.fi.length; p < N; p++) {
+    const f = lk.shade[p]; if (f === 1) continue; const q = p * 4;
+    out[q] *= f; out[q+1] *= f; out[q+2] *= f;
+  }
+  $("field").getContext("2d").putImageData(lk.img, 0, 0);
+}
+
+// ======================================================================== render: lines
+let PROJ_GRID = null;   // projected x,y of every grid point
+function projGrid() {
+  const g = S.meta.grid, N = g.nx * g.ny, xy = new Float32Array(N * 2);
+  for (let j = 0, p = 0; j < g.ny; j++) for (let i = 0; i < g.nx; i++, p++) {
+    const [x, y] = LCC.fwd(g.west + i * g.dx, g.north - j * g.dy); xy[p*2] = x; xy[p*2+1] = y;
+  }
+  PROJ_GRID = xy;
+}
+function projLines(lines) {
+  return lines.map((flat) => { const o = new Float32Array(flat.length);
+    for (let i = 0; i < flat.length; i += 2) { const [x, y] = LCC.fwd(flat[i], flat[i+1]); o[i] = x; o[i+1] = y; } return o; });
+}
+
+function smooth(src, off, nx, ny, passes) {
+  let a = Float32Array.from(src.subarray(off, off + nx * ny)), b = new Float32Array(nx * ny);
+  for (let p = 0; p < passes; p++) {
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      let s = 0, c = 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= nx || jj >= ny) continue; s += a[jj*nx+ii]; c++;
+      }
+      b[j*nx+i] = s / c;
+    }
+    [a, b] = [b, a];
+  }
+  return a;
+}
+
+// Marching squares: segments in grid coordinates, grouped by level.
+function contour(f, nx, ny, step) {
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < f.length; i++) { if (f[i] < lo) lo = f[i]; if (f[i] > hi) hi = f[i]; }
+  const out = new Map();
+  for (let L = Math.ceil(lo / step) * step; L <= hi; L += step) out.set(L, []);
+  for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+    const a = f[j*nx+i], b = f[j*nx+i+1], c = f[(j+1)*nx+i+1], d = f[(j+1)*nx+i];
+    const mn = Math.min(a, b, c, d), mx = Math.max(a, b, c, d);
+    for (let L = Math.ceil(mn / step) * step; L < mx; L += step) {
+      const pts = [];
+      if ((a < L) !== (b < L)) pts.push(i + (L - a) / (b - a), j);
+      if ((b < L) !== (c < L)) pts.push(i + 1, j + (L - b) / (c - b));
+      if ((c < L) !== (d < L)) pts.push(i + 1 - (L - c) / (d - c), j + 1);
+      if ((d < L) !== (a < L)) pts.push(i, j + 1 - (L - d) / (a - d));
+      const segs = out.get(L); if (!segs) continue;
+      for (let s = 0; s + 3 < pts.length; s += 4) segs.push(pts[s], pts[s+1], pts[s+2], pts[s+3]);
+    }
+  }
+  return out;
+}
+
+function gridToScreen(gi, gj) {
+  const g = S.meta.grid, nx = g.nx;
+  const i0 = Math.min(Math.floor(gi), nx - 2), j0 = Math.min(Math.floor(gj), g.ny - 2), fx = gi - i0, fy = gj - j0;
+  const k = (j0 * nx + i0) * 2, P = PROJ_GRID, k2 = k + nx * 2;
+  const x = (P[k] * (1-fx) + P[k+2] * fx) * (1-fy) + (P[k2] * (1-fx) + P[k2+2] * fx) * fy;
+  const y = (P[k+1] * (1-fx) + P[k+3] * fx) * (1-fy) + (P[k2+1] * (1-fx) + P[k2+3] * fx) * fy;
+  return toScreen(x, y);
+}
+
+function extrema(f, nx, ny, r) {
+  const found = [];
+  for (let j = r; j < ny - r; j += 2) for (let i = r; i < nx - r; i += 2) {
+    // A centre must be the extreme of its neighbourhood and stand out from the neighbourhood mean
+    // by a few hPa, so flat, weak dips in broad highs are not labelled.
+    const v = f[j*nx+i]; let isMin = true, isMax = true, sum = 0, cnt = 0;
+    for (let dj = -r; dj <= r && (isMin || isMax); dj += 2) for (let di = -r; di <= r; di += 2) {
+      const w = f[(j+dj)*nx+i+di]; if (w < v) isMin = false; if (w > v) isMax = false; sum += w; cnt++;
+    }
+    if (!(isMin || isMax)) continue;
+    const mean = sum / cnt;
+    if ((isMin && mean - v > 1.5) || (isMax && v - mean > 1.5)) found.push({i, j, v, low: isMin});
+  }
+  return found;
+}
+
+const contourCache = new Map();
+function contoursFor(id, frame, step) {
+  const key = `${id}:${frame}`; if (contourCache.has(key)) return contourCache.get(key);
+  const g = S.meta.grid, d = S.data[id], passes = g.dx < 0.03 ? 6 : 2;
+  const f = smooth(d.vals, frame * g.nx * g.ny, g.nx, g.ny, passes);
+  const r = 2 * Math.max(4, Math.round(0.35 / g.dx));
+  const res = {levels: contour(f, g.nx, g.ny, step), ext: id === "msl" ? extrema(f, g.nx, g.ny, r) : []};
+  if (contourCache.size > 120) contourCache.clear();
+  contourCache.set(key, res); return res;
+}
+
+function drawPolylines(ctx, lines) {
+  ctx.beginPath();
+  for (const L of lines) {
+    for (let i = 0; i < L.length; i += 2) {
+      const [x, y] = toScreen(L[i], L[i+1]);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+  }
+  ctx.stroke();
+}
+
+function drawContours(ctx, res, major, labelFmt) {
+  ctx.lineJoin = "round";
+  for (const [L, segs] of res.levels) {
+    ctx.lineWidth = L % major === 0 ? 1.5 : 0.8;
+    ctx.beginPath();
+    for (let s = 0; s < segs.length; s += 4) {
+      const [x0, y0] = gridToScreen(segs[s], segs[s+1]), [x1, y1] = gridToScreen(segs[s+2], segs[s+3]);
+      ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+    }
+    ctx.stroke();
+  }
+}
+
+function renderLines() {
+  const c = $("lines"), ctx = c.getContext("2d");
+  ctx.setTransform(S.dpr, 0, 0, S.dpr, 0, 0); ctx.clearRect(0, 0, S.W, S.H);
+  if (!S.basemap) return;
+  if (S.borders) { ctx.strokeStyle = css("--border"); ctx.lineWidth = 0.7; ctx.setLineDash([3, 2]); drawPolylines(ctx, S.basemap.borders); ctx.setLineDash([]); }
+  ctx.strokeStyle = css("--coast"); ctx.lineWidth = 0.9; drawPolylines(ctx, S.basemap.coast); drawPolylines(ctx, S.basemap.lakes);
+  if (S.towns) { ctx.strokeStyle = css("--river"); ctx.lineWidth = 1.1; ctx.globalAlpha = 0.85; drawPolylines(ctx, S.basemap.rivers); ctx.globalAlpha = 1; }
+
+  const ink = css("--isobar");
+  const zd = S.data.z500;
+  if (S.layer === "z500" && zd) {
+    ctx.strokeStyle = ink; ctx.globalAlpha = 0.85;
+    drawContours(ctx, contoursFor("z500", S.frame, 4), 20);
+    ctx.globalAlpha = 1;
+  }
+  const md = S.data.msl;
+  if (S.isobars && md && S.layer !== "z500") {
+    const res = contoursFor("msl", S.frame, 2);
+    ctx.strokeStyle = ink; ctx.globalAlpha = 0.8; drawContours(ctx, res, 10); ctx.globalAlpha = 1;
+    ctx.fillStyle = ink; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (const e of res.ext) {
+      const [x, y] = gridToScreen(e.i, e.j); if (x < 10 || y < 10 || x > S.W - 10 || y > S.H - 10) continue;
+      ctx.font = `700 22px ${css("--font-display")}`; ctx.fillText(e.low ? "N" : "V", x, y - 6);
+      ctx.font = `500 11px ${css("--font-data")}`; ctx.fillText(Math.round(e.v), x, y + 11);
+    }
+  }
+  if (S.towns) drawTowns(ctx);
+  if (S.probe) {
+    const [x, y] = toScreen(...LCC.fwd(S.probe.lon, S.probe.lat));
+    ctx.strokeStyle = css("--sheet"); ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.stroke();
+    ctx.strokeStyle = css("--accent"); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.stroke();
+  }
+}
+
+function drawTowns(ctx) {
+  const big = S.view.k > 14000, ink = css("--town"), halo = css("--halo");
+  ctx.font = `500 12px ${css("--font-body")}`; ctx.textBaseline = "middle"; ctx.textAlign = "left"; ctx.lineJoin = "round";
+  for (const [name, lon, lat, rank, kind] of TOWNS) {
+    if (rank > 1 && !big) continue;
+    const [x, y] = toScreen(...LCC.fwd(lon, lat)); if (x < -40 || y < -10 || x > S.W + 10 || y > S.H + 10) continue;
+    ctx.fillStyle = ink; ctx.strokeStyle = halo; ctx.lineWidth = 3;
+    ctx.beginPath();
+    if (kind === "peak") { ctx.moveTo(x, y - 4); ctx.lineTo(x + 4, y + 3); ctx.lineTo(x - 4, y + 3); ctx.closePath(); }
+    else ctx.arc(x, y, 2.6, 0, 7);
+    ctx.stroke(); ctx.fill();
+    ctx.strokeText(name, x + 6, y); ctx.fillText(name, x + 6, y);
+  }
+}
+
+// ======================================================================== wind flow particles
+const FLOW = {parts: [], raf: 0, last: 0};
+function flowLayerId() { return S.layer === "wind850" ? "wind850" : "wind10"; }
+function flowWanted() { return S.flowOn || !!STYLE[S.layer].flow; }
+
+function resetParticles() {
+  const n = Math.round(Math.min(3500, S.W * S.H / 260));
+  FLOW.parts = Array.from({length: n}, () => ({x: Math.random() * S.W, y: Math.random() * S.H, age: Math.random() * 80}));
+  const ctx = $("flow").getContext("2d"); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, $("flow").width, $("flow").height);
+}
+function flowTick(ts) {
+  FLOW.raf = requestAnimationFrame(flowTick);
+  if (ts - FLOW.last < 30) return; FLOW.last = ts;
+  const c = $("flow"), ctx = c.getContext("2d"), d = S.data[flowLayerId()];
+  ctx.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
+  ctx.globalCompositeOperation = "destination-in"; ctx.fillStyle = "rgba(0,0,0,0.9)"; ctx.fillRect(0, 0, S.W, S.H);
+  ctx.globalCompositeOperation = "source-over";
+  if (!d || d.missing.has(S.frame)) return;
+  const g = S.meta.grid, off = S.frame * g.nx * g.ny, jet = flowLayerId() === "wind850";
+  const speedPx = (jet ? 0.09 : 0.18) * Math.max(0.6, Math.min(2.5, S.view.k / 9000));
+  ctx.strokeStyle = css("--flow"); ctx.lineWidth = jet ? 1.1 : 0.9; ctx.beginPath();
+  for (const p of FLOW.parts) {
+    const [px, py] = toProj(p.x, p.y), [lon, lat] = LCC.inv(px, py), [i, j] = gridIndex(lon, lat);
+    if (p.age++ > 90 || !(i >= 0 && j >= 0 && i < g.nx - 1 && j < g.ny - 1)) {
+      p.x = Math.random() * S.W; p.y = Math.random() * S.H; p.age = 0; continue;
+    }
+    const u = sample(d.u, off, i, j), v = sample(d.v, off, i, j);
+    const th = LCC.n * (lon - LCC.lon0) * D2R, ct = Math.cos(th), st = Math.sin(th);
+    const dx = (u * ct - v * st) * speedPx, dy = -(u * st + v * ct) * speedPx;
+    ctx.moveTo(p.x, p.y); p.x += dx; p.y += dy; ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke();
+}
+async function updateFlow() {
+  const want = flowWanted();
+  if (!want) { cancelAnimationFrame(FLOW.raf); FLOW.raf = 0; const c = $("flow"); c.getContext("2d").clearRect(0, 0, c.width, c.height); return; }
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  await loadLayer(flowLayerId()).catch(() => {});
+  if (!FLOW.raf) { resetParticles(); FLOW.raf = requestAnimationFrame(flowTick); }
+}
+
+// ======================================================================== formatting
+function isWind(id) { return S.meta.layers.find((l) => l.id === id).unit === "m/s"; }
+function unitOf(id) { return isWind(id) ? WIND_UNITS[S.windUnit].u : S.meta.layers.find((l) => l.id === id).unit; }
+function fmt(id, v) {
+  const st = STYLE[id];
+  if (isWind(id)) { const x = v * WIND_UNITS[S.windUnit].f; return x.toFixed(S.windUnit === "ms" ? st.dec : 0); }
+  if (id === "precip" || id === "snow") return v < 0.05 ? "0" : v.toFixed(v < 10 ? 1 : 0);
+  return v.toFixed(st.dec);
+}
+const dayFmt = new Intl.DateTimeFormat(undefined, {weekday: "short", day: "numeric", month: "short"});
+const hourFmt = new Intl.DateTimeFormat(undefined, {hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZoneName: "short"});
+const wdFmt = new Intl.DateTimeFormat(undefined, {weekday: "short"});
+const pad = (n, w = 2) => String(n).padStart(w, "0");
+
+// ======================================================================== UI
+function showStatus(msg) { const s = $("status"); s.textContent = msg; s.hidden = !msg; }
+
+function buildLayerList() {
+  const nav = $("layers"); nav.innerHTML = "";
+  for (const grp of GROUP_ORDER) {
+    const sec = document.createElement("div"); sec.className = "layer-group";
+    sec.innerHTML = `<p class="group-label">${grp}</p><ul></ul>`;
+    for (const L of S.meta.layers.filter((l) => STYLE[l.id] && STYLE[l.id].group === grp)) {
+      const li = document.createElement("li");
+      li.innerHTML = `<button class="layer-btn" data-layer="${L.id}" aria-pressed="false"><span>${L.name}</span><span class="u" data-unit="${L.id}"></span></button>`;
+      li.firstChild.addEventListener("click", () => setLayer(L.id));
+      sec.querySelector("ul").appendChild(li);
+    }
+    nav.appendChild(sec);
+  }
+  refreshUnits();
+}
+function refreshUnits() { document.querySelectorAll("[data-unit]").forEach((el) => el.textContent = unitOf(el.dataset.unit)); }
+
+function drawLegend() {
+  const id = S.layer, st = STYLE[id], L = S.meta.layers.find((l) => l.id === id), {lut, t0, t1, n, tf} = lutFor(id);
+  for (const [cid, tid] of [["legendBar", "legendTicks"], ["legendBar2", "legendTicks2"]]) {
+    const c = $(cid), ctx = c.getContext("2d"), w = c.width, h = c.height;
+    const bg = parseColor(css("--sea"));
+    const img = ctx.createImageData(w, h);
+    for (let x = 0; x < w; x++) {
+      const k = Math.round(x / (w - 1) * (n - 1)) * 4, a = lut[k+3] / 255;
+      for (let y = 0; y < h; y++) {
+        const q = (y * w + x) * 4;
+        img.data[q] = bg[0] + (lut[k] - bg[0]) * a; img.data[q+1] = bg[1] + (lut[k+1] - bg[1]) * a;
+        img.data[q+2] = bg[2] + (lut[k+2] - bg[2]) * a; img.data[q+3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    $(tid).innerHTML = st.ticks.map((v) => {
+      const pos = (tf(v) - t0) / (t1 - t0) * 100;
+      const x = isWind(id) ? v * WIND_UNITS[S.windUnit].f : v;
+      const label = Number.isInteger(x) || Math.abs(x) >= 20 || !isWind(id) && Number.isInteger(v) ? Math.round(x) : x.toFixed(1);
+      return `<span style="left:${Math.min(95, Math.max(4, pos))}%">${label}</span>`;
+    }).join("");
+  }
+  $("legendTitle").textContent = `${L.name} · ${unitOf(id)}`;
+  $("legendNote").textContent = st.legend;
+}
+
+function updateTime() {
+  const m = S.meta, t = new Date(m.times[S.frame]), step = m.steps[S.frame];
+  $("whenLocal").textContent = `${dayFmt.format(t)} · ${hourFmt.format(t)}`;
+  $("whenMeta").textContent = `T+${pad(step, 3)} h · ${pad(t.getUTCHours())} UTC`;
+  $("time").value = S.frame;
+  const d = S.data[S.layer];
+  if (d && d.missing.has(S.frame)) showStatus(S.layer === "precip" || S.layer === "snow" ? "Urne vsote so na voljo od +1 h naprej." : "Za ta čas v modelu ni podatkov.");
+  else if (d) showStatus("");
+}
+
+function render() {
+  renderField(); renderLines(); updateTime(); renderProbe();
+}
+
+async function setLayer(id) {
+  S.layer = id; store.set("layer", id);
+  document.querySelectorAll(".layer-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.layer === id)));
+  drawLegend(); render();
+  if (!S.data[id]) showStatus(`Nalaganje: ${S.meta.layers.find((l) => l.id === id).name} …`);
+  try { await loadLayer(id); } catch { return; }
+  if (S.layer !== id) return;
+  showStatus(""); render(); updateFlow();
+  if (id === "z500") contourCache.clear();
+}
+
+function setFrame(f) {
+  const nf = S.meta.steps.length; S.frame = (f + nf) % nf; render();
+}
+
+function togglePlay(on = !S.playing) {
+  S.playing = on; clearInterval(S.timer);
+  $("play").setAttribute("aria-label", on ? "Ustavi animacijo" : "Predvajaj animacijo");
+  $("playIcon").innerHTML = on ? '<path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/>' : '<path d="M4 2.5v11l9-5.5z"/>';
+  if (on) S.timer = setInterval(() => setFrame(S.frame + 1), 300);
+}
+
+function buildDays() {
+  const m = S.meta, el = $("days"), nf = m.steps.length; el.innerHTML = "";
+  let lastDay = null;
+  m.times.forEach((iso, k) => {
+    const t = new Date(iso), day = t.toDateString();
+    if (day !== lastDay && (lastDay !== null || t.getHours() < 3)) {
+      const s = document.createElement("span"); s.style.left = `${k / (nf - 1) * 100}%`; s.textContent = wdFmt.format(t);
+      if (k / (nf - 1) < 0.97) el.appendChild(s);
+    }
+    lastDay = day;
+  });
+}
+
+// ---------------------------------------------------------------------- probe / meteogram
+function valueAt(id, frame, lon, lat) {
+  const d = S.data[id]; if (!d || d.missing.has(frame)) return null;
+  const g = S.meta.grid, [i, j] = gridIndex(lon, lat);
+  if (!(i >= 0 && j >= 0 && i <= g.nx - 1 && j <= g.ny - 1)) return null;
+  return sample(d.vals, frame * g.nx * g.ny, i, j);
+}
+function renderProbe() {
+  const box = $("probe");
+  if (!S.probe) { box.hidden = true; return; }
+  const d = S.data[S.layer]; box.hidden = false;
+  const {lon, lat} = S.probe;
+  $("probeWhere").textContent = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "S" : "J"} ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "V" : "Z"}`;
+  const L = S.meta.layers.find((l) => l.id === S.layer);
+  $("probeTitle").textContent = `${L.name}, ${MODELS[S.model]}, naslednjih ${S.meta.steps.at(-1)} ur`;
+  const svg = $("probeChart");
+  if (!d) { $("probeVal").textContent = "…"; svg.innerHTML = ""; return; }
+  const v = valueAt(S.layer, S.frame, lon, lat);
+  $("probeVal").textContent = v == null ? "–" : `${fmt(S.layer, v)} ${unitOf(S.layer)}`;
+
+  const nf = S.meta.steps.length, series = Array.from({length: nf}, (_, k) => valueAt(S.layer, k, lon, lat));
+  const W = svg.clientWidth || 340, H = 120, pl = 34, pr = 6, pt = 8, pb = 18;
+  const good = series.filter((x) => x != null), conv = (x) => isWind(S.layer) ? x * WIND_UNITS[S.windUnit].f : x;
+  if (!good.length) { svg.innerHTML = ""; return; }
+  const bars = S.layer === "precip" || S.layer === "snow";
+  let lo = Math.min(...good.map(conv)), hi = Math.max(...good.map(conv));
+  if (bars || ["tcc", "cape", "gust", "wind10", "wind850", "dbz", "snow", "hzerocl", "rh2m"].includes(S.layer)) lo = 0;
+  if (S.layer === "tcc" || S.layer === "rh2m") hi = 100;
+  if (hi - lo < 1e-6) hi = lo + 1;
+  const padv = (hi - lo) * 0.08; if (!bars && lo !== 0) lo -= padv; hi += padv;
+  const X = (k) => pl + (W - pl - pr) * k / (nf - 1), Y = (val) => pt + (H - pt - pb) * (1 - (val - lo) / (hi - lo));
+  const ink2 = css("--ink-2"), rule = css("--rule"), acc = css("--accent"), ink = css("--ink");
+  let s = "";
+  // day separators at local midnight
+  S.meta.times.forEach((iso, k) => { const t = new Date(iso); if (k && t.getHours() < 3 && new Date(S.meta.times[k-1]).getDate() !== t.getDate()) {
+    s += `<line x1="${X(k)}" x2="${X(k)}" y1="${pt}" y2="${H - pb}" stroke="${rule}"/>`;
+    if (k < nf - 3) s += `<text x="${X(k) + 3}" y="${H - 5}">${wdFmt.format(t)}</text>`; } });
+  for (const val of [lo + (hi - lo) * 0.1, (lo + hi) / 2, hi - (hi - lo) * 0.1]) {
+    s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(val)}" y2="${Y(val)}" stroke="${rule}" stroke-dasharray="2 3"/>`;
+    s += `<text x="${pl - 4}" y="${Y(val) + 3}" text-anchor="end">${Math.abs(hi - lo) < 5 ? val.toFixed(1) : Math.round(val)}</text>`;
+  }
+  if (S.layer === "t2m" || S.layer === "t850") if (lo < 0 && hi > 0) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(0)}" y2="${Y(0)}" stroke="${ink2}" stroke-width="0.8"/>`;
+  if (bars) {
+    const bw = Math.max(1.5, (W - pl - pr) / nf * 0.7);
+    series.forEach((val, k) => { if (val == null || val < 0.05) return;
+      s += `<rect x="${X(k) - bw}" y="${Y(val)}" width="${bw}" height="${Y(lo) - Y(val)}" fill="${acc}"/>`; });
+  } else {
+    let path = "", started = false;
+    series.forEach((val, k) => { if (val == null) { started = false; return; } path += `${started ? "L" : "M"}${X(k).toFixed(1)},${Y(conv(val)).toFixed(1)}`; started = true; });
+    s += `<path d="${path}" fill="none" stroke="${acc}" stroke-width="1.8" stroke-linejoin="round"/>`;
+  }
+  s += `<line x1="${X(S.frame)}" x2="${X(S.frame)}" y1="${pt}" y2="${H - pb}" stroke="${ink}" stroke-width="1"/>`;
+  if (v != null && !bars) s += `<circle cx="${X(S.frame)}" cy="${Y(conv(v))}" r="3.5" fill="${acc}" stroke="${css("--sheet")}" stroke-width="1.5"/>`;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+  svg.onclick = (e) => { const r = svg.getBoundingClientRect(); const k = Math.round(((e.clientX - r.left) / r.width * W - pl) / (W - pl - pr) * (nf - 1)); if (k >= 0 && k < nf) { togglePlay(false); setFrame(k); } };
+}
+
+// ---------------------------------------------------------------------- sizing + interaction
+function resize() {
+  const m = $("map"), r = m.getBoundingClientRect();
+  const first = !S.W;
+  const oldW = S.W, oldH = S.H;
+  S.W = Math.max(1, Math.round(r.width)); S.H = Math.max(1, Math.round(r.height));
+  S.dpr = Math.min(2, window.devicePixelRatio || 1);
+  S.RS = S.W * S.H > 900000 ? 2 : 1.5;
+  for (const id of ["lines", "flow"]) { const c = $(id); c.width = S.W * S.dpr; c.height = S.H * S.dpr; }
+  if (first || !oldW) fitEurope(); else S.view.k *= Math.sqrt((S.W * S.H) / (oldW * oldH));
+  buildLookup(); render(); if (FLOW.raf) resetParticles();
+}
+
+let pendingView = 0;
+function viewChanged() {
+  if (pendingView) return;
+  pendingView = requestAnimationFrame(() => { pendingView = 0; buildLookup(); render(); if (FLOW.raf) resetParticles(); });
+}
+function zoomAt(sx, sy, factor) {
+  const [px, py] = toProj(sx, sy);
+  S.view.k = Math.min(400000, Math.max(3000, S.view.k * factor));
+  S.view.cx = px - (sx - S.W / 2) / S.view.k; S.view.cy = py + (sy - S.H / 2) / S.view.k;
+  viewChanged();
+}
+
+function setupInteraction() {
+  const m = $("map"), ptrs = new Map(); let downAt = null, pinch = null;
+  m.addEventListener("wheel", (e) => { e.preventDefault(); const r = m.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015)); }, {passive: false});
+  m.addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".map-tools, .probe")) return;
+    m.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    downAt = ptrs.size === 1 ? {x: e.clientX, y: e.clientY, moved: false} : null;
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = {d: Math.hypot(a.x - b.x, a.y - b.y)}; }
+  });
+  m.addEventListener("pointermove", (e) => {
+    const r = m.getBoundingClientRect();
+    if (!ptrs.has(e.pointerId)) { if (e.pointerType === "mouse") hover(e.clientX - r.left, e.clientY - r.top); return; }
+    const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    if (ptrs.size === 2 && pinch) {
+      const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+      zoomAt((a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top, d / pinch.d); pinch.d = d; return;
+    }
+    const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+    if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 5) downAt.moved = true;
+    if (downAt && downAt.moved) { S.view.cx -= dx / S.view.k; S.view.cy += dy / S.view.k; $("tip").hidden = true; viewChanged(); }
+  });
+  const end = (e) => {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null;
+    if (downAt && !downAt.moved && e.type === "pointerup") {
+      const r = m.getBoundingClientRect(), [lon, lat] = LCC.inv(...toProj(e.clientX - r.left, e.clientY - r.top)), [i, j] = gridIndex(lon, lat), g = S.meta.grid;
+      if (i >= 0 && j >= 0 && i <= g.nx - 1 && j <= g.ny - 1) { S.probe = {lon, lat}; renderLines(); renderProbe(); }
+    }
+    downAt = null;
+  };
+  m.addEventListener("pointerup", end); m.addEventListener("pointercancel", end);
+  m.addEventListener("pointerleave", () => { $("tip").hidden = true; });
+  $("zoomIn").onclick = () => zoomAt(S.W / 2, S.H / 2, 1.5);
+  $("zoomOut").onclick = () => zoomAt(S.W / 2, S.H / 2, 1 / 1.5);
+  $("zoomReset").onclick = () => { fitEurope(); viewChanged(); };
+  $("probeClose").onclick = () => { S.probe = null; renderLines(); renderProbe(); };
+  $("play").onclick = () => togglePlay();
+  $("time").addEventListener("input", (e) => { togglePlay(false); setFrame(+e.target.value); });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, select")) return;
+    if (e.key === " ") { e.preventDefault(); togglePlay(); }
+    else if (e.key === "ArrowRight") { togglePlay(false); setFrame(S.frame + 1); }
+    else if (e.key === "ArrowLeft") { togglePlay(false); setFrame(S.frame - 1); }
+  });
+  $("optIsobars").onchange = (e) => { S.isobars = e.target.checked; store.set("isobars", S.isobars ? "1" : "0"); renderLines(); };
+  $("optBorders").onchange = (e) => { S.borders = e.target.checked; renderLines(); };
+  $("optTowns").onchange = (e) => { S.towns = e.target.checked; renderLines(); };
+  document.querySelectorAll(".model-btn").forEach((b) => b.addEventListener("click", () => setModel(b.dataset.model)));
+  $("optFlow").onchange = (e) => { S.flowOn = e.target.checked; updateFlow(); };
+  $("optWind").onchange = (e) => { S.windUnit = e.target.value; store.set("wind", S.windUnit); refreshUnits(); drawLegend(); render(); };
+  new ResizeObserver(() => resize()).observe(m);
+  const themeChanged = () => { buildLookup(); drawLegend(); render(); };
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeChanged);
+  new MutationObserver(themeChanged).observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
+}
+
+function hover(sx, sy) {
+  const tip = $("tip"); const d = S.data[S.layer];
+  if (!d || !S.meta) { tip.hidden = true; return; }
+  const [lon, lat] = LCC.inv(...toProj(sx, sy)), v = valueAt(S.layer, S.frame, lon, lat);
+  if (v == null) { tip.hidden = true; return; }
+  let txt = `${fmt(S.layer, v)} ${unitOf(S.layer)}`;
+  if (S.isobars && S.layer !== "msl") { const p = valueAt("msl", S.frame, lon, lat); if (p != null) txt += ` · ${Math.round(p)} hPa`; }
+  tip.textContent = txt; tip.style.left = `${sx}px`; tip.style.top = `${sy}px`; tip.hidden = false;
+}
+
+// Move the options + credits into the mobile <details> on narrow screens.
+function placePanels() {
+  const narrow = matchMedia("(max-width: 760px)").matches, slot = $("moreSlot"), rail = $("rail");
+  for (const id of ["optionsDesk", "creditsDesk"]) {
+    const el = $(id);
+    if (narrow && el.parentElement !== slot) { slot.appendChild(el); el.classList.remove("desk-only"); }
+    if (!narrow && el.parentElement === slot) { rail.insertBefore(el, $("moreMobile")); el.classList.add("desk-only"); }
+  }
+}
+
+// ======================================================================== models + boot
+async function loadMeta(model) {
+  const meta = await (await fetch(`data/${model}/meta.json`, {cache: "no-cache"})).json();
+  return meta;
+}
+
+function applyMeta(meta, keepTime) {
+  S.meta = meta; S.data = {}; S.loading = {}; contourCache.clear();
+  const run = new Date(meta.run);
+  $("runLabel").textContent = `${meta.model} · zagon ${pad(run.getUTCHours())} UTC, ${dayFmt.format(run)}`;
+  $("builtLabel").textContent = `Podatki preneseni ${new Date(meta.built).toLocaleString()}.`;
+  $("time").max = meta.steps.length - 1;
+  const target = keepTime ?? Date.now(); let best = 0;
+  meta.times.forEach((iso, k) => { if (Math.abs(Date.parse(iso) - target) < Math.abs(Date.parse(meta.times[best]) - target)) best = k; });
+  S.frame = best;
+  if (!meta.layers.some((l) => l.id === S.layer)) S.layer = "t2m";
+  document.querySelectorAll(".model-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.model === S.model)));
+  buildLayerList(); buildDays(); projGrid();
+}
+
+async function setModel(model) {
+  if (model === S.model && S.meta) return;
+  const keep = S.meta ? Date.parse(S.meta.times[S.frame]) : null;
+  let meta;
+  try { meta = await loadMeta(model); }
+  catch { showStatus(`Podatkov modela ${MODELS[model]} trenutno ni.`); return; }
+  togglePlay(false);
+  S.model = model; store.set("model", model);
+  applyMeta(meta, keep);
+  buildLookup(); render();
+  if (FLOW.raf) { cancelAnimationFrame(FLOW.raf); FLOW.raf = 0; }
+  loadLayer("msl").then(() => renderLines()).catch(() => {});
+  await setLayer(S.layer);
+}
+
+async function loadRelief() {
+  try {
+    const g = await (await fetch("data/relief.json")).json(), px = await decodeSprite("data/relief.png");
+    const n = px.length / 4, shade = new Float32Array(n), land = new Float32Array(n);
+    for (let i = 0; i < n; i++) { shade[i] = px[i*4] / 255; land[i] = px[i*4+1] / 255; }
+    return {g, shade, land};
+  } catch { return null; }
+}
+
+async function boot() {
+  placePanels(); matchMedia("(max-width: 760px)").addEventListener("change", placePanels);
+  const savedModel = store.get("model");
+  S.model = MODELS[savedModel] ? savedModel : "aladin";
+  let meta;
+  try { meta = await loadMeta(S.model); }
+  catch {
+    S.model = S.model === "aladin" ? "icon" : "aladin";
+    try { meta = await loadMeta(S.model); }
+    catch { showStatus("Podatkov ni bilo mogoče naložiti."); return; }
+  }
+  const saved = store.get("layer"); if (saved && STYLE[saved]) S.layer = saved;
+  S.windUnit = WIND_UNITS[store.get("wind")] ? store.get("wind") : "ms"; $("optWind").value = S.windUnit;
+  S.isobars = store.get("isobars") !== "0"; $("optIsobars").checked = S.isobars;
+  applyMeta(meta, null);
+  setupInteraction();
+  const [bm, relief] = await Promise.all([fetch("basemap-si.json").then((r) => r.json()), loadRelief()]);
+  S.basemap = {coast: projLines(bm.coast), borders: projLines(bm.borders), rivers: projLines(bm.rivers), lakes: projLines(bm.lakes)};
+  S.relief = relief;
+  resize();
+  loadLayer("msl").then(() => renderLines()).catch(() => {});
+  await setLayer(S.layer);
+}
+boot();
+</script>
