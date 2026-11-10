@@ -108,6 +108,8 @@ button, select, input { font: inherit; color: inherit; }
 .credits { margin-top: auto; font-size: 11.5px; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; }
 .credits p { margin: 0; }
 .credits a { color: inherit; }
+.crosslink { display: inline-block; margin-top: 6px; font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: 0.04em; color: var(--accent); text-decoration: none; }
+.crosslink:hover { text-decoration: underline; }
 
 /* ---------- stage ---------- */
 .stage { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
@@ -181,6 +183,8 @@ button, select, input { font: inherit; color: inherit; }
   .brand { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .brand h1 { font-size: 21px; }
   .brand .run { margin: 0; text-align: right; }
+  .brand { flex-wrap: wrap; }
+  .brand .crosslink { flex-basis: 100%; margin-top: 0; }
   .layers { flex-direction: row; overflow-x: auto; gap: 14px; scrollbar-width: none; margin-right: -16px; padding-right: 16px; }
   .layer-group { flex: none; }
   .layer-group ul { flex-direction: row; gap: 4px; }
@@ -209,6 +213,7 @@ button, select, input { font: inherit; color: inherit; }
     <header class="brand">
       <h1>Vremenska napoved za Evropo</h1>
       <p class="run" id="runLabel">Nalaganje vremenske napovedi …</p>
+      <a class="crosslink" href="slovenija/">Slovenija (ALADIN/SI, ICON-D2) →</a>
     </header>
     <nav class="layers" id="layers" aria-label="Sloj zemljevida"></nav>
 
@@ -234,7 +239,7 @@ button, select, input { font: inherit; color: inherit; }
     <footer class="credits desk-only" id="creditsDesk">
       <p>Samo izračun modela, ne napoved ali opozorilo. Za opozorila glej <a href="https://meteo.arso.gov.si" target="_blank" rel="noopener">ARSO</a> ali <a href="https://meteoalarm.org" target="_blank" rel="noopener">MeteoAlarm</a>.</p>
       <p>Podatki: © ECMWF, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Obrezano in pretvorjeno v druge enote. Obale: Natural Earth.</p>
-      <p>Avtor: Tim Gregorčič s pomočjo modela Opus 5.5 in po zgledu aplikacije <a href="https://github.com/tehoro/weather-explorer-web" target="_blank" rel="noopener">Weather Explorer</a> avtorja Neila Gordona (MIT).</p>
+      <p>Po zgledu aplikacije <a href="https://github.com/tehoro/weather-explorer-web" target="_blank" rel="noopener">Weather Explorer</a> avtorja Neila Gordona (MIT).</p>
       <p id="builtLabel"></p>
     </footer>
 
