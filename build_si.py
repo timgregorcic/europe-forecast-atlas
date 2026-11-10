@@ -48,7 +48,7 @@ WEST, EAST, SOUTH, NORTH = 11.625, 17.895, 44.642, 47.407
 LAYERS = [
     dict(id="t2m", name="Temperatura 2 m", unit="°C", bits=16, lo=-40, hi=45, kind="scalar"),
     dict(id="rh2m", name="Relativna vlaga 2 m", unit="%", bits=8, lo=0, hi=100, kind="scalar"),
-    dict(id="precip", name="Padavine (1 h)", unit="mm", bits=16, lo=0, hi=100, kind="scalar"),
+    dict(id="precip", name="Padavine (1 h)", unit="mm", bits=16, lo=0, hi=200, kind="scalar"),
     dict(id="snow", name="Snežna odeja", unit="cm", bits=16, lo=0, hi=400, kind="scalar", models=["icon"]),
     dict(id="dbz", name="Radarska odbojnost (sim.)", unit="dBZ", bits=8, lo=0, hi=75, kind="scalar", models=["icon"]),
     dict(id="wind10", name="Veter 10 m", unit="m/s", bits=8, lo=-50, hi=50, kind="vector"),

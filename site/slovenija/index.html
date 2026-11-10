@@ -250,6 +250,7 @@ button, select, input { font: inherit; color: inherit; }
       <label class="opt"><input type="checkbox" id="optFlow"> Tok vetra (10 m)</label>
       <label class="opt"><input type="checkbox" id="optBorders" checked> Meje držav</label>
       <label class="opt"><input type="checkbox" id="optTowns" checked> Kraji in reke</label>
+      <label class="opt"><input type="checkbox" id="optValues" checked> Vrednosti temperature v celicah</label>
       <label class="opt">Veter v
         <select id="optWind">
           <option value="ms">m/s</option><option value="kmh">km/h</option><option value="kt">vozlih</option>
@@ -331,8 +332,11 @@ const STYLE = {
   msl:    {group:"Pri tleh", stops:[[985,"#5b3f8cc8"],[995,"#6b7fd0b0"],[1005,"#a9c4e070"],[1013,"#ffffff00"],[1020,"#f0dcb060"],[1028,"#e8b878a0"],[1040,"#c98a4ac0"]],
            ticks:[990,1000,1013,1025,1035], dec:0, legend:"Zračni tlak, preračunan na morsko gladino. Izobare na 2 hPa."},
   tcc:    {group:"Pri tleh", stops:[[0,"#8995a000"],[30,"#8995a070"],[70,"#a9b4bdc8"],[100,"#c8d0d6f0"]], ticks:[0,25,50,75,100], dec:0, legend:"Delež neba, ki ga prekrivajo oblaki na kateri koli višini."},
-  precip: {group:"Padavine", scale:"sqrt", stops:[[0,"#9fd0ff00"],[0.1,"#9fd0ff00"],[0.2,"#9fd0ffb0"],[0.5,"#4fa3f0d0"],[1,"#1f6fd8e0"],[2,"#2bb673ee"],[5,"#f4d03fee"],[10,"#f08a24f0"],[20,"#d7263df0"],[40,"#9b1fa8f0"],[100,"#4b0a6bf0"]],
-           ticks:[1,5,10,20,50], dec:1, legend:"Padavine v zadnji uri, kot količina vode."},
+  // Razredi: meje v mm in barva vsakega razreda (pod prvo mejo ni barve).
+  precip: {group:"Padavine", classes:[0.5,2.5,5,10,20,30,40,50,60,70,80,90,100,150,200],
+           colors:["#a6d8f5f0","#5fb4ecf0","#2a7fd6f0","#2bb673f0","#8fcf3cf0","#f4e03ff0","#f6b13af0","#f07f2af0",
+                   "#e04a2bf0","#c41f3bf0","#9b1a5ff0","#7a1f8ff0","#a65bd1f0","#e0b4f2f0"],
+           ticks:[0.5,5,20,40,60,80,100], dec:1, legend:"Padavine v zadnji uri, kot količina vode. Razredi (mm): 0,5–2,5, 2,5–5, 5–10, 10–20, nato po 10 do 100, 100–150, 150–200."},
   snow:   {group:"Padavine", scale:"sqrt", stops:[[0,"#e8f0ff00"],[0.5,"#e8f0ff00"],[1,"#cfe0ffb8"],[5,"#9db8f5d8"],[10,"#6f7fe0e6"],[20,"#8a4fd0ee"],[50,"#c03fb0ee"],[100,"#ff7fd0f0"],[400,"#ffe0f4f0"]],
            ticks:[1,10,20,50,100,200], dec:0, legend:"Skupna višina snežne odeje."},
   dbz:    {group:"Padavine", stops:[[0,"#a0c8f000"],[8,"#a0c8f000"],[12,"#a0c8f0b0"],[20,"#3f86e0d8"],[28,"#2bb673e6"],[34,"#e8d43aee"],[40,"#f08a24f0"],[46,"#d7263df0"],[52,"#c02ab0f0"],[58,"#7a1aa0f0"],[75,"#f4e6fff0"]],
@@ -352,7 +356,7 @@ const MODELS = {aladin: "ALADIN/SI", icon: "ICON-D2"};
 // Kraji: [ime, dolžina, širina, pomembnost 1 = vedno, 2 = pri večji povečavi]
 const TOWNS = [
   ["Ljubljana",14.506,46.051,1],["Maribor",15.646,46.557,1],["Celje",15.262,46.236,1],["Kranj",14.355,46.239,1],
-  ["Koper",13.730,45.548,1],["Novo mesto",15.169,45.804,1],["Nova Gorica",13.648,45.956,1],["Murska Sobota",16.166,46.662,1],
+  ["Koper",13.730,45.548,1],["Novo mesto",15.169,45.804,1],["Mokronog",15.141,45.934,1],["Nova Gorica",13.648,45.956,1],["Murska Sobota",16.166,46.662,1],
   ["Ptuj",15.870,46.420,2],["Velenje",15.110,46.359,2],["Postojna",14.215,45.776,2],["Kočevje",14.866,45.643,2],
   ["Jesenice",14.067,46.433,2],["Tolmin",13.733,46.183,2],["Slovenj Gradec",15.080,46.510,2],["Brežice",15.595,45.905,2],
   ["Ajdovščina",13.910,45.887,2],["Sežana",13.873,45.709,2],["Bovec",13.552,46.338,2],["Črnomelj",15.189,45.571,2],
@@ -380,7 +384,7 @@ const S = {
   meta: null, frame: 0, layer: "t2m", playing: false, timer: null,
   data: {},          // layer id -> {vals | u,v,spd}
   loading: {},       // layer id -> Promise
-  model: "aladin", relief: null, basemap: null, towns: true,
+  model: "aladin", relief: null, basemap: null, towns: true, values: true,
   view: {cx: 0, cy: 0, k: 1}, W: 0, H: 0, dpr: 1, RS: 2,
   look: null,        // field-canvas lookup {gw, gh, fi, fj, base}
   probe: null,       // {lon, lat}
@@ -450,7 +454,26 @@ function loadLayer(id) {
 }
 
 // ======================================================================== colour LUT
+// Classed scale: each class gets the same width; tf maps a value to its class position
+// (below the first bound negative = no colour, between bounds k and k+1 -> k..k+1).
+function classedLUT(st) {
+  const B = st.classes, nc = st.colors.length, n = 1024, t0 = -1, t1 = nc, lut = new Uint8ClampedArray(n * 4);
+  const rgba = st.colors.map((c) => [1, 3, 5, 7].map((o) => c.length > o ? parseInt(c.slice(o, o + 2), 16) : 255));
+  for (let k = 0; k < n; k++) {
+    const t = t0 + (t1 - t0) * k / (n - 1);
+    if (t < 0) continue;
+    lut.set(rgba[Math.min(nc - 1, Math.floor(t))], k * 4);
+  }
+  const tf = (v) => {
+    if (!(v >= B[0])) return -1 + Math.max(0, v) / B[0];
+    for (let k = 0; k < B.length - 1; k++) if (v < B[k + 1]) return k + (v - B[k]) / (B[k + 1] - B[k]);
+    return nc;
+  };
+  return {lut, t0, t1, n, tf};
+}
+
 function buildLUT(id) {
+  if (STYLE[id].classes) return classedLUT(STYLE[id]);
   const st = STYLE[id], tf = st.scale === "sqrt" ? Math.sqrt : (x) => x;
   const stops = st.stops.map(([v, c]) => {
     const h = c.slice(1);
@@ -696,6 +719,7 @@ function renderLines() {
       ctx.font = `500 11px ${css("--font-data")}`; ctx.fillText(Math.round(e.v), x, y + 11);
     }
   }
+  if (S.values && (S.layer === "t2m" || S.layer === "t850")) drawCellValues(ctx);
   if (S.towns) drawTowns(ctx);
   if (S.probe) {
     const [x, y] = toScreen(...LCC.fwd(S.probe.lon, S.probe.lat));
@@ -703,6 +727,28 @@ function renderLines() {
     ctx.strokeStyle = css("--accent"); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.stroke();
   }
   ctx.restore();
+}
+
+// Rounded value at the centre of every model cell. When cells are too small on screen for a
+// label, every n-th cell is labelled so the numbers do not overlap; zoom in to see all of them.
+function drawCellValues(ctx) {
+  const d = S.data[S.layer]; if (!d || d.missing.has(S.frame)) return;
+  const g = S.meta.grid, off = S.frame * g.nx * g.ny;
+  const [ax, ay] = toScreen(...LCC.fwd(g.west, g.north)), [bx, by] = toScreen(...LCC.fwd(g.west + g.dx, g.north - g.dy));
+  const cw = Math.abs(bx - ax), ch = Math.abs(by - ay);
+  const si = Math.max(1, Math.ceil(24 / cw)), sj = Math.max(1, Math.ceil(15 / ch));
+  const [lonA, latA] = LCC.inv(...toProj(0, 0)), [lonB, latB] = LCC.inv(...toProj(S.W, S.H));
+  const i0 = Math.max(0, Math.floor((lonA - g.west) / g.dx / si) * si), i1 = Math.min(g.nx - 1, Math.ceil((lonB - g.west) / g.dx));
+  const j0 = Math.max(0, Math.floor((g.north - latA) / g.dy / sj) * sj), j1 = Math.min(g.ny - 1, Math.ceil((g.north - latB) / g.dy));
+  const size = si === 1 && sj === 1 ? Math.max(9, Math.min(13, Math.floor(Math.min(cw / 2.4, ch * 0.75)))) : 10;
+  ctx.font = `500 ${size}px ${css("--font-data")}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+  ctx.fillStyle = css("--town"); ctx.strokeStyle = css("--halo"); ctx.lineWidth = 2.5;
+  for (let j = j0; j <= j1; j += sj) for (let i = i0; i <= i1; i += si) {
+    const v = d.vals[off + j * g.nx + i]; if (!Number.isFinite(v)) continue;
+    const [x, y] = toScreen(...LCC.fwd(g.west + i * g.dx, g.north - j * g.dy));
+    const t = String(Math.round(v) || 0);
+    ctx.strokeText(t, x, y); ctx.fillText(t, x, y);
+  }
 }
 
 function drawTowns(ctx) {
@@ -1000,6 +1046,7 @@ function setupInteraction() {
   $("optIsobars").onchange = (e) => { S.isobars = e.target.checked; store.set("isobars", S.isobars ? "1" : "0"); renderLines(); };
   $("optBorders").onchange = (e) => { S.borders = e.target.checked; renderLines(); };
   $("optTowns").onchange = (e) => { S.towns = e.target.checked; renderLines(); };
+  $("optValues").onchange = (e) => { S.values = e.target.checked; renderLines(); };
   document.querySelectorAll(".model-btn").forEach((b) => b.addEventListener("click", () => setModel(b.dataset.model)));
   $("optFlow").onchange = (e) => { S.flowOn = e.target.checked; updateFlow(); };
   $("optWind").onchange = (e) => { S.windUnit = e.target.value; store.set("wind", S.windUnit); refreshUnits(); drawLegend(); render(); };
