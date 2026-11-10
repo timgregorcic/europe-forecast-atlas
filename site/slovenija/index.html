@@ -721,6 +721,7 @@ function renderLines() {
   }
   if (S.values && (S.layer === "t2m" || S.layer === "t850")) drawCellValues(ctx);
   if (S.towns) drawTowns(ctx);
+  if (S.layer === "precip") drawPrecipMax(ctx);
   if (S.probe) {
     const [x, y] = toScreen(...LCC.fwd(S.probe.lon, S.probe.lat));
     ctx.strokeStyle = css("--sheet"); ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.stroke();
@@ -751,6 +752,31 @@ function drawCellValues(ctx) {
     const t = String(Math.round(v) || 0);
     ctx.strokeText(t, x, y); ctx.fillText(t, x, y);
   }
+  ctx.restore();
+}
+
+// Bold red label on the cell with the most precipitation in the current hour, within the part
+// of the model area that is visible on screen (so it follows zooming and panning).
+function drawPrecipMax(ctx) {
+  const d = S.data.precip; if (!d || d.missing.has(S.frame)) return;
+  const g = S.meta.grid, off = S.frame * g.nx * g.ny, v = d.vals, pad = 12;
+  const [lonA, latA] = LCC.inv(...toProj(pad, pad)), [lonB, latB] = LCC.inv(...toProj(S.W - pad, S.H - pad));
+  const i0 = Math.max(0, Math.ceil((lonA - g.west) / g.dx)), i1 = Math.min(g.nx - 1, Math.floor((lonB - g.west) / g.dx));
+  const j0 = Math.max(0, Math.ceil((g.north - latA) / g.dy)), j1 = Math.min(g.ny - 1, Math.floor((g.north - latB) / g.dy));
+  let bi = -1, bj = -1, bv = 0;
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    const x = v[off + j * g.nx + i]; if (x > bv) { bv = x; bi = i; bj = j; }
+  }
+  if (bi < 0 || bv < 0.1) return;
+  const i = bi, j = bj;
+  const [x, y] = toScreen(...LCC.fwd(g.west + i * g.dx, g.north - j * g.dy));
+  const t = `${bv.toFixed(1).replace(".", ",")} mm`;
+  ctx.save();
+  ctx.lineJoin = "round"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+  ctx.font = `700 15px ${css("--font-body")}`;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.92)"; ctx.lineWidth = 4; ctx.fillStyle = "#d1121f";
+  ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 7); ctx.stroke(); ctx.fill();
+  ctx.strokeText(t, x, y - 6); ctx.fillText(t, x, y - 6);
   ctx.restore();
 }
 
