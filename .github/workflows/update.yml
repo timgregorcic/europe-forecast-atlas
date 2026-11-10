@@ -1,15 +1,16 @@
-# Fetch the latest ECMWF run, build the Europe data and publish the site to GitHub Pages.
-# Runs after each 00 and 12 UTC run is complete on Open Data (about 7-8 h after the run time).
+# Prenese zadnje zagone modelov in objavi stran na GitHub Pages.
+#   Evropa:    ECMWF IFS (build.py)
+#   Slovenija: ALADIN/SI (ARSO) in ICON-D2 (DWD) (build_si.py)
+# Teče vsake 3 ure; vsak builder vedno vzame zadnji dokončani zagon.
 name: Update forecast
 
 on:
   schedule:
-    - cron: "17 8 * * *"    # 00 UTC run
-    - cron: "17 20 * * *"   # 12 UTC run
+    - cron: "17 */3 * * *"
   workflow_dispatch: {}
   push:
     branches: [main]
-    paths: ["site/**", "build.py", ".github/workflows/update.yml"]
+    paths: ["site/**", "build.py", "build_si.py", ".github/workflows/update.yml"]
 
 permissions:
   contents: read
@@ -23,7 +24,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
 
@@ -34,8 +35,11 @@ jobs:
       - name: Install
         run: pip install -r requirements.txt
 
-      - name: Build forecast data
+      - name: Evropa (ECMWF)
         run: python -u build.py --out site/data --workers 6
+
+      - name: Slovenija (ALADIN/SI, ICON-D2)
+        run: python -u build_si.py --out site/slovenija/data --workers 8
 
       - uses: actions/configure-pages@v5
 
