@@ -25,6 +25,20 @@ requests) follows its backend, and the coastline and border outlines are cropped
   Hover (with a mouse) for the value under the cursor.
 - **Controls:** space plays/pauses, ← → step through time, mouse wheel or pinch zooms, drag pans.
 
+### Slovenija (`site/slovenija/`)
+
+A second page for Slovenia with two high-resolution models, switchable in the page:
+
+- **ALADIN/SI** (ARSO): from https://meteo.arso.gov.si/uploads/probase/www/model/data/ — one ZIP per
+  run (00/06/12/18 UTC), hourly to +72 h, grid about 4.4 × 6.3 km. Layers: 2 m temperature and
+  humidity, 10 m wind, pressure, cloud cover, 1 h precipitation, 850 hPa temperature and wind, 500 hPa height.
+- **ICON-D2** (DWD Open Data): from https://opendata.dwd.de/weather/nwp/icon-d2/grib/ — runs every
+  3 h, hourly to +48 h, 0.02° (about 2 km). Adds gusts, snow depth, simulated radar reflectivity,
+  CAPE and freezing level. Its model terrain is used for the hillshade under both models.
+
+Built by `build_si.py`; borders and rivers from Natural Earth 1:10m (`tools/make_basemap_si.py`).
+Credit the sources on any page that shows the data: "Vir: ARSO" and "Deutscher Wetterdienst".
+
 **This is raw model guidance, not a forecast or warning.** For warnings use your national weather
 service or [MeteoAlarm](https://meteoalarm.org).
 
