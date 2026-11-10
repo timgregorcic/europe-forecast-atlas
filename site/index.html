@@ -608,10 +608,24 @@ function drawContours(ctx, res, major, labelFmt) {
   }
 }
 
+// Clip line drawing (borders, coast, rivers, towns) to the model's data area.
+function clipDomain(ctx) {
+  const g = S.meta.grid, dx = g.dx ?? g.res, dy = g.dy ?? g.res;
+  const W = g.west, E = g.west + (g.nx - 1) * dx, N = g.north, Sd = g.north - (g.ny - 1) * dy, n = 60, pts = [];
+  for (let k = 0; k <= n; k++) pts.push([W + (E - W) * k / n, N]);
+  for (let k = 0; k <= n; k++) pts.push([E, N - (N - Sd) * k / n]);
+  for (let k = 0; k <= n; k++) pts.push([E - (E - W) * k / n, Sd]);
+  for (let k = 0; k <= n; k++) pts.push([W, Sd + (N - Sd) * k / n]);
+  ctx.beginPath();
+  pts.forEach(([lo, la], i) => { const [x, y] = toScreen(...LCC.fwd(lo, la)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.closePath(); ctx.clip();
+}
+
 function renderLines() {
   const c = $("lines"), ctx = c.getContext("2d");
   ctx.setTransform(S.dpr, 0, 0, S.dpr, 0, 0); ctx.clearRect(0, 0, S.W, S.H);
-  if (!S.basemap) return;
+  if (!S.basemap || !S.meta) return;
+  ctx.save(); clipDomain(ctx);
   if (S.borders) { ctx.strokeStyle = css("--border"); ctx.lineWidth = 0.7; ctx.setLineDash([3, 2]); drawPolylines(ctx, S.basemap.borders); ctx.setLineDash([]); }
   ctx.strokeStyle = css("--coast"); ctx.lineWidth = 0.9; drawPolylines(ctx, S.basemap.coast);
 
@@ -638,6 +652,7 @@ function renderLines() {
     ctx.strokeStyle = css("--sheet"); ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.stroke();
     ctx.strokeStyle = css("--accent"); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.stroke();
   }
+  ctx.restore();
 }
 
 // ======================================================================== wind flow particles
