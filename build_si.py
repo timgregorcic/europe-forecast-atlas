@@ -297,8 +297,10 @@ def icon_url(hh: str, run: str, step: int, field: str, level: int | None) -> str
 
 
 def icon_latest() -> tuple[str, str, int]:
-    """(hh, run 'YYYYMMDDHH', max step) of the newest run whose files are all present."""
-    best = None
+    """(hh, run 'YYYYMMDDHH', last step) of the newest ICON-D2 run that is fully published.
+    A run is uploaded step by step over about an hour, so a run only counts once it reaches
+    +45 h (03 UTC runs end at +45 h, the others at +48 h) in every field folder."""
+    cands = []
     for h in range(0, 24, 3):
         hh = f"{h:02d}"
         try:
@@ -306,31 +308,16 @@ def icon_latest() -> tuple[str, str, int]:
         except Exception:
             continue
         runs = re.findall(r"regular-lat-lon_single-level_(\d{10})_(\d{3})_2d_t_2m", lst)
-        if not runs:
+        if runs:
+            run = max(r for r, _ in runs)
+            cands.append((run, hh, max(int(s) for r, s in runs if r == run)))
+    for run, hh, mx in sorted(cands, reverse=True):
+        if mx < 45:
+            print(f"  ICON-D2 {run}: only +{mx} h published so far, skipped", flush=True)
             continue
-        run = max(r for r, _ in runs)
-        mx = max(int(s) for r, s in runs if r == run)
-        if best is None or run > best[1]:
-            best = (hh, run, mx)
-    if best is None:
-        raise RuntimeError("no ICON-D2 runs found")
-    # confirm every field dir has this run's last step; otherwise fall back 3 h
-    for _ in range(4):
-        hh, run, mx = best
-        ok = True
-        for field in list(ICON_SINGLE) + sorted({f for f, _ in ICON_PRESSURE}):
-            lst = get(f"{DWD}/{hh}/{field}/", attempts=3).decode()
-            if f"_{run}_{mx:03d}_" not in lst:
-                ok = False
-                break
-        if ok:
-            return best
-        prev = datetime.strptime(run, "%Y%m%d%H") - timedelta(hours=3)
-        hh2 = f"{prev.hour:02d}"
-        lst = get(f"{DWD}/{hh2}/t_2m/", attempts=3).decode()
-        runs = re.findall(r"regular-lat-lon_single-level_(\d{10})_(\d{3})_2d_t_2m", lst)
-        r2 = prev.strftime("%Y%m%d%H")
-        best = (hh2, r2, max(int(s) for r, s in runs if r == r2))
+        if all(f"_{run}_{mx:03d}_" in get(f"{DWD}/{hh}/{field}/", attempts=3).decode()
+               for field in list(ICON_SINGLE) + sorted({f for f, _ in ICON_PRESSURE})):
+            return hh, run, mx
     raise RuntimeError("no complete ICON-D2 run")
 
 
