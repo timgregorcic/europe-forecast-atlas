@@ -27,6 +27,8 @@
   --river: #3f7fa8;
   --town: #17242b;
   --halo: rgba(246, 248, 248, 0.85);
+  --m-aladin: #0f5f8c;
+  --m-icon: #c4651a;
   --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --font-body: "Barlow", "Segoe UI", system-ui, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -38,6 +40,7 @@
     --sea: #17242c; --land: #262c2b; --void: #0f1519;
     --coast: #c9d6dc; --border: #7b8b92; --isobar: #e8eef0; --flow: rgba(235, 244, 248, 0.8);
     --river: #6fa9cf; --town: #eef3f5; --halo: rgba(19, 27, 32, 0.8);
+    --m-aladin: #6fb7e0; --m-icon: #f0a05a;
     color-scheme: dark;
   }
 }
@@ -47,6 +50,7 @@
   --sea: #17242c; --land: #262c2b; --void: #0f1519;
   --coast: #c9d6dc; --border: #7b8b92; --isobar: #e8eef0; --flow: rgba(235, 244, 248, 0.8);
   --river: #6fa9cf; --town: #eef3f5; --halo: rgba(19, 27, 32, 0.8);
+  --m-aladin: #6fb7e0; --m-icon: #f0a05a;
   color-scheme: dark;
 }
 
@@ -171,7 +175,7 @@ button, select, input { font: inherit; color: inherit; }
 /* ---------- probe (meteogram) ---------- */
 .probe {
   position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); bottom: 84px;
-  width: min(380px, calc(100% - 24px));
+  width: min(420px, calc(100% - 24px)); max-height: calc(100% - 100px); overflow-y: auto;
   background: var(--sheet); border: 1px solid var(--rule); padding: 10px 12px 8px;
   box-shadow: 0 6px 24px rgba(0,0,0,0.12);
 }
@@ -182,6 +186,19 @@ button, select, input { font: inherit; color: inherit; }
 .probe-title { font-size: 12px; color: var(--ink-2); margin: 2px 0 4px; }
 .probe svg { display: block; width: 100%; height: 120px; cursor: pointer; }
 .probe svg text { font-family: var(--font-data); font-size: 10px; fill: var(--ink-2); }
+.cmp { border-top: 1px solid var(--rule); margin-top: 6px; padding-top: 6px; }
+.cmp-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 11.5px; color: var(--ink-2); }
+.cmp-title { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink); margin-right: auto; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-data); font-size: 11px; }
+.chip i { display: inline-block; width: 14px; height: 3px; }
+.chip.icon i { background: var(--m-icon); }
+.chip.aladin i { background: var(--m-aladin); }
+.cmp-toggle { background: none; border: 1px solid var(--rule); cursor: pointer; font-size: 11px; padding: 1px 7px; color: var(--ink-2); }
+.cmp-body { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.cmp.collapsed .cmp-body { display: none; }
+.probe .cmp svg { height: 66px; }
+.probe .cmp svg.last { height: 80px; }
+.cmp-note { margin: 2px 0 0; font-size: 11px; color: var(--ink-2); }
 
 .mobile-only { display: none; }
 
@@ -295,6 +312,20 @@ button, select, input { font: inherit; color: inherit; }
         </div>
         <p class="probe-title" id="probeTitle"></p>
         <svg id="probeChart" role="img" aria-label="Napoved za izbrano točko"></svg>
+        <div class="cmp" id="cmp">
+          <div class="cmp-head">
+            <span class="cmp-title">Primerjava modelov</span>
+            <span class="chip aladin"><i></i>ALADIN/SI</span>
+            <span class="chip icon"><i></i>ICON-D2</span>
+            <button class="cmp-toggle" id="cmpToggle" aria-expanded="true">Skrij</button>
+          </div>
+          <div class="cmp-body">
+            <svg id="cmpT" role="img" aria-label="Temperatura 2 m po obeh modelih"></svg>
+            <svg id="cmpP" role="img" aria-label="Urne padavine po obeh modelih"></svg>
+            <svg id="cmpW" class="last" role="img" aria-label="Hitrost vetra po obeh modelih"></svg>
+            <p class="cmp-note" id="cmpNote"></p>
+          </div>
+        </div>
       </section>
     </div>
 
@@ -351,6 +382,9 @@ const STYLE = {
   z500:   {group:"Višinski podatki", stops:[[500,"#3a52c2e0"],[520,"#4f9be0e0"],[540,"#bfe6e0e0"],[556,"#f2e58ae0"],[568,"#f19447e0"],[580,"#d24a3ae0"],[600,"#8f1238e0"]],
            ticks:[520,540,560,580], dec:0, contour:4, legend:"Višina ploskve 500 hPa v dekametrih. Višinske doline so nizko, grebeni visoko."},
 };
+STYLE.precip24 = {...STYLE.precip, legend:"Padavine v zadnjih 24 urah, v razredih (mm). V prvih 24 urah napovedi: seštevek od začetka."};
+STYLE.precipacc = {...STYLE.precip, legend:"Skupne padavine od začetka napovedi do izbranega časa, v razredih (mm)."};
+const PRECIP_IDS = ["precip", "precip24", "precipacc"];
 const GROUP_ORDER = ["Pri tleh", "Padavine", "Višinski podatki"];
 const MODELS = {aladin: "ALADIN/SI", icon: "ICON-D2"};
 // Kraji: [ime, dolžina, širina, pomembnost 1 = vedno, 2 = pri večji povečavi]
@@ -416,31 +450,66 @@ async function decodeSprite(url) {
   return ctx.getImageData(0, 0, bmp.width, bmp.height).data;
 }
 
+// Pixels of a sprite -> values (see build_si.py for the encoding).
+function decodePx(L, px) {
+  const N = px.length / 4, span = L.hi - L.lo;
+  let d;
+  if (L.kind === "vector") {
+    const u = new Float32Array(N), v = new Float32Array(N), spd = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      u[i] = L.lo + px[i*4] / 255 * span; v[i] = L.lo + px[i*4+1] / 255 * span;
+      spd[i] = Math.hypot(u[i], v[i]);
+    }
+    d = {u, v, vals: spd};
+  } else {
+    const vals = new Float32Array(N);
+    if (L.bits === 16) for (let i = 0; i < N; i++) vals[i] = L.lo + (px[i*4] * 256 + px[i*4+1]) / 65535 * span;
+    else for (let i = 0; i < N; i++) vals[i] = L.lo + px[i*4] / 255 * span;
+    d = {vals};
+  }
+  d.meta = L; d.missing = new Set(L.missing);
+  return d;
+}
+const spriteUrl = (model, meta, id) => `data/${model}/${id}.png?v=${encodeURIComponent(meta.built)}`;
+
+// 24 h and since-start sums, made in the browser from the hourly precipitation.
+function derivePrecip(id, meta, p) {
+  const g = meta.grid, N = g.nx * g.ny, F = meta.steps.length, cum = new Float32Array(N * F);
+  for (let k = 0; k < F; k++) {
+    const o = k * N, prev = o - N, has = !p.missing.has(k);
+    for (let q = 0; q < N; q++) cum[o + q] = (k ? cum[prev + q] : 0) + (has ? Math.max(0, p.vals[o + q]) : 0);
+  }
+  let vals = cum;
+  if (id === "precip24") {
+    vals = new Float32Array(N * F);
+    for (let k = 0; k < F; k++) {
+      const lag = meta.steps.indexOf(meta.steps[k] - 24), o = k * N;
+      for (let q = 0; q < N; q++) vals[o + q] = cum[o + q] - (lag >= 0 ? cum[lag * N + q] : 0);
+    }
+  }
+  return {vals, meta: meta.layers.find((l) => l.id === id), missing: new Set()};
+}
+
 function loadLayer(id) {
   if (S.data[id]) return Promise.resolve(S.data[id]);
   if (S.loading[id]) return S.loading[id];
+  if (id === "precip24" || id === "precipacc") {
+    const meta = S.meta;
+    S.loading[id] = loadLayer("precip").then((p) => {
+      if (meta !== S.meta) throw new Error("model changed");
+      return (S.data[id] = derivePrecip(id, meta, p));
+    });
+    S.loading[id].catch(() => delete S.loading[id]);
+    return S.loading[id];
+  }
   const L = S.meta.layers.find((l) => l.id === id);
   const btn = document.querySelector(`[data-layer="${id}"]`);
   btn && btn.classList.add("loading");
   const model = S.model;
-  S.loading[id] = decodeSprite(`data/${model}/${id}.png`).then((px) => {
-    if (model !== S.model) throw new Error("model changed");
-    const N = px.length / 4, span = L.hi - L.lo;
-    let d;
-    if (L.kind === "vector") {
-      const u = new Float32Array(N), v = new Float32Array(N), spd = new Float32Array(N);
-      for (let i = 0; i < N; i++) {
-        u[i] = L.lo + px[i*4] / 255 * span; v[i] = L.lo + px[i*4+1] / 255 * span;
-        spd[i] = Math.hypot(u[i], v[i]);
-      }
-      d = {u, v, vals: spd};
-    } else {
-      const vals = new Float32Array(N);
-      if (L.bits === 16) for (let i = 0; i < N; i++) vals[i] = L.lo + (px[i*4] * 256 + px[i*4+1]) / 65535 * span;
-      else for (let i = 0; i < N; i++) vals[i] = L.lo + px[i*4] / 255 * span;
-      d = {vals};
-    }
-    d.meta = L; d.missing = new Set(L.missing);
+  const meta = S.meta;
+  S.loading[id] = decodeSprite(spriteUrl(model, meta, id)).then((px) => {
+    if (model !== S.model || meta !== S.meta) throw new Error("model changed");
+    const d = decodePx(L, px);
     S.data[id] = d;
     btn && btn.classList.remove("loading");
     return d;
@@ -722,7 +791,7 @@ function renderLines() {
   }
   if (S.values && (S.layer === "t2m" || S.layer === "t850")) drawCellValues(ctx);
   if (S.towns) drawTowns(ctx);
-  if (S.layer === "precip") drawPrecipMax(ctx);
+  if (PRECIP_IDS.includes(S.layer)) drawPrecipMax(ctx);
   if (S.probe) {
     const [x, y] = toScreen(...LCC.fwd(S.probe.lon, S.probe.lat));
     ctx.strokeStyle = css("--sheet"); ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.stroke();
@@ -759,7 +828,7 @@ function drawCellValues(ctx) {
 // Bold red label on the cell with the most precipitation in the current hour, within the part
 // of the model area that is visible on screen (so it follows zooming and panning).
 function drawPrecipMax(ctx) {
-  const d = S.data.precip; if (!d || d.missing.has(S.frame)) return;
+  const d = S.data[S.layer]; if (!d || d.missing.has(S.frame)) return;
   const g = S.meta.grid, off = S.frame * g.nx * g.ny, v = d.vals, pad = 12;
   const [lonA, latA] = LCC.inv(...toProj(pad, pad)), [lonB, latB] = LCC.inv(...toProj(S.W - pad, S.H - pad));
   const i0 = Math.max(0, Math.ceil((lonA - g.west) / g.dx)), i1 = Math.min(g.nx - 1, Math.floor((lonB - g.west) / g.dx));
@@ -870,7 +939,7 @@ function unitOf(id) { return isWind(id) ? WIND_UNITS[S.windUnit].u : S.meta.laye
 function fmt(id, v) {
   const st = STYLE[id];
   if (isWind(id)) { const x = v * WIND_UNITS[S.windUnit].f; return x.toFixed(S.windUnit === "ms" ? st.dec : 0); }
-  if (id === "precip" || id === "snow") return v < 0.05 ? "0" : v.toFixed(v < 10 ? 1 : 0);
+  if (PRECIP_IDS.includes(id) || id === "snow") return v < 0.05 ? "0" : v.toFixed(v < 10 ? 1 : 0);
   return v.toFixed(st.dec);
 }
 const dayFmt = new Intl.DateTimeFormat(undefined, {weekday: "short", day: "numeric", month: "short"});
@@ -999,7 +1068,7 @@ function renderProbe() {
   if (!good.length) { svg.innerHTML = ""; return; }
   const bars = S.layer === "precip" || S.layer === "snow";
   let lo = Math.min(...good.map(conv)), hi = Math.max(...good.map(conv));
-  if (bars || ["tcc", "cape", "gust", "wind10", "wind850", "dbz", "snow", "hzerocl", "rh2m"].includes(S.layer)) lo = 0;
+  if (bars || ["tcc", "cape", "gust", "wind10", "wind850", "dbz", "snow", "hzerocl", "rh2m", "precip24", "precipacc"].includes(S.layer)) lo = 0;
   if (S.layer === "tcc" || S.layer === "rh2m") hi = 100;
   if (hi - lo < 1e-6) hi = lo + 1;
   const padv = (hi - lo) * 0.08; if (!bars && lo !== 0) lo -= padv; hi += padv;
@@ -1029,6 +1098,103 @@ function renderProbe() {
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   svg.innerHTML = s;
   svg.onclick = (e) => { const r = svg.getBoundingClientRect(); const k = Math.round(((e.clientX - r.left) / r.width * W - pl) / (W - pl - pr) * (nf - 1)); if (k >= 0 && k < nf) { togglePlay(false); setFrame(k); } };
+  renderCompare();
+}
+
+// ---------------------------------------------------------------------- model comparison
+// Both models at the selected point: 2 m temperature, 1 h precipitation and 10 m wind, on one
+// time axis. The model not on the map is loaded separately (only these three layers).
+const CMP = {};          // model -> {meta, metaP, data: {id: decoded}, p: {id: promise}}
+const CMP_IDS = ["t2m", "precip", "wind10"];
+let cmpToken = 0;
+
+async function cmpLayer(model, id) {
+  if (model === S.model && S.meta) return {meta: S.meta, d: await loadLayer(id)};
+  const c = CMP[model] || (CMP[model] = {data: {}, p: {}});
+  if (!c.meta) c.meta = await (c.metaP || (c.metaP = loadMeta(model)));
+  if (!c.data[id]) {
+    const L = c.meta.layers.find((l) => l.id === id);
+    if (!L) return null;
+    c.p[id] = c.p[id] || decodeSprite(spriteUrl(model, c.meta, id)).then((px) => decodePx(L, px));
+    c.data[id] = await c.p[id];
+  }
+  return {meta: c.meta, d: c.data[id]};
+}
+
+function seriesAt(r, lon, lat) {
+  if (!r) return null;
+  const g = r.meta.grid, N = g.nx * g.ny, i = (lon - g.west) / g.dx, j = (g.north - lat) / g.dy;
+  if (!(i >= 0 && j >= 0 && i <= g.nx - 1 && j <= g.ny - 1)) return null;
+  return r.meta.times.map((iso, k) => [Date.parse(iso), r.d.missing.has(k) ? null : sampleGrid(r.d.vals.subarray(k * N, (k + 1) * N), g, i, j)]);
+}
+
+function cmpCollapsed() { return $("cmp").classList.contains("collapsed"); }
+
+async function renderCompare() {
+  if (!S.probe || cmpCollapsed()) return;
+  const token = ++cmpToken, {lon, lat} = S.probe, models = ["aladin", "icon"];
+  const res = {};
+  await Promise.all(models.flatMap((m) => CMP_IDS.map(async (id) => {
+    try { res[`${m}:${id}`] = seriesAt(await cmpLayer(m, id), lon, lat); } catch { res[`${m}:${id}`] = null; }
+  })));
+  if (token !== cmpToken || !S.probe) return;
+  const all = Object.values(res).filter(Boolean).flat();
+  if (!all.length) { ["cmpT", "cmpP", "cmpW"].forEach((id) => $(id).innerHTML = ""); $("cmpNote").textContent = "Za to točko ni podatkov."; return; }
+  const t0 = Math.min(...all.map((p) => p[0])), t1 = Math.max(...all.map((p) => p[0]));
+  const wf = WIND_UNITS[S.windUnit].f;
+  const ser = (id, conv = (x) => x) => models.map((m) => ({m, pts: (res[`${m}:${id}`] || []).map(([t, v]) => [t, v == null ? null : conv(v)])}));
+  drawMini($("cmpT"), ser("t2m"), {t0, t1, unit: "°C", zeroLine: true});
+  drawMini($("cmpP"), ser("precip"), {t0, t1, unit: "mm/h", bars: true, lo0: true});
+  drawMini($("cmpW"), ser("wind10", (v) => v * wf), {t0, t1, unit: WIND_UNITS[S.windUnit].u, lo0: true, days: true});
+  const missing = models.filter((m) => !res[`${m}:t2m`]).map((m) => MODELS[m]);
+  $("cmpNote").textContent = missing.length ? `${missing.join(", ")}: točka je izven območja modela ali podatkov ni.` : "";
+}
+
+function drawMini(svg, series, o) {
+  const W = svg.clientWidth || 380, H = svg.classList.contains("last") ? 80 : 66, pl = 34, pr = 6, pt = 12, pb = o.days ? 18 : 4;
+  const vals = series.flatMap((s) => s.pts.map((p) => p[1]).filter((v) => v != null));
+  if (!vals.length) { svg.innerHTML = ""; return; }
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (o.lo0) lo = 0;
+  if (o.bars) hi = Math.max(hi, 1);
+  if (hi - lo < 1) { const m = (hi + lo) / 2; lo = o.lo0 ? 0 : m - 0.5; hi = lo + 1; }
+  if (!o.lo0) { const p = (hi - lo) * 0.1; lo -= p; hi += p; } else hi *= 1.08;
+  const X = (t) => pl + (W - pl - pr) * (t - o.t0) / (o.t1 - o.t0), Y = (v) => pt + (H - pt - pb) * (1 - (v - lo) / (hi - lo));
+  const rule = css("--rule"), ink = css("--ink"), ink2 = css("--ink-2");
+  let s = `<text x="${pl}" y="9">${o.unit}</text>`;
+  for (const v of [lo + (hi - lo) * 0.15, hi - (hi - lo) * 0.15]) {
+    const lab = Math.abs(hi - lo) < 4 ? v.toFixed(1) : Math.round(v);
+    s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="${rule}" stroke-dasharray="2 3"/><text x="${pl - 4}" y="${Y(v) + 3}" text-anchor="end">${lab}</text>`;
+  }
+  if (o.zeroLine && lo < 0 && hi > 0) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(0)}" y2="${Y(0)}" stroke="${ink2}" stroke-width="0.8"/>`;
+  // local midnights
+  const d = new Date(o.t0); d.setHours(24, 0, 0, 0);
+  for (let t = d.getTime(); t < o.t1; t += 86400000) {
+    s += `<line x1="${X(t)}" x2="${X(t)}" y1="${pt}" y2="${H - pb}" stroke="${rule}"/>`;
+    if (o.days && X(t) < W - 30) s += `<text x="${X(t) + 3}" y="${H - 5}">${wdFmt.format(new Date(t))}</text>`;
+  }
+  const hourPx = (W - pl - pr) / ((o.t1 - o.t0) / 3600000 || 1), bw = Math.max(1, hourPx * 0.42);
+  series.forEach((sr, n) => {
+    const col = css(sr.m === "icon" ? "--m-icon" : "--m-aladin");
+    if (o.bars) {
+      for (const [t, v] of sr.pts) if (v != null && v >= 0.05)
+        s += `<rect x="${(X(t) - (n ? 0 : bw)).toFixed(1)}" y="${Y(v).toFixed(1)}" width="${bw.toFixed(1)}" height="${(Y(lo) - Y(v)).toFixed(1)}" fill="${col}"/>`;
+    } else {
+      let path = "", on = false;
+      for (const [t, v] of sr.pts) { if (v == null) { on = false; continue; } path += `${on ? "L" : "M"}${X(t).toFixed(1)},${Y(v).toFixed(1)}`; on = true; }
+      s += `<path d="${path}" fill="none" stroke="${col}" stroke-width="1.7" stroke-linejoin="round"/>`;
+    }
+  });
+  const now = Date.parse(S.meta.times[S.frame]);
+  s += `<line x1="${X(now)}" x2="${X(now)}" y1="${pt}" y2="${H - pb}" stroke="${ink}" stroke-width="1"/>`;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+  svg.style.cursor = "pointer";
+  svg.onclick = (e) => {
+    const r = svg.getBoundingClientRect(), t = o.t0 + ((e.clientX - r.left) / r.width * W - pl) / (W - pl - pr) * (o.t1 - o.t0);
+    let best = 0; S.meta.times.forEach((iso, k) => { if (Math.abs(Date.parse(iso) - t) < Math.abs(Date.parse(S.meta.times[best]) - t)) best = k; });
+    togglePlay(false); setFrame(best);
+  };
 }
 
 // ---------------------------------------------------------------------- sizing + interaction
@@ -1092,6 +1258,13 @@ function setupInteraction() {
   $("zoomOut").onclick = () => zoomAt(S.W / 2, S.H / 2, 1 / 1.5);
   $("zoomReset").onclick = () => { fitEurope(); viewChanged(); };
   $("probeClose").onclick = () => { S.probe = null; renderLines(); renderProbe(); };
+  const setCmp = (open) => {
+    $("cmp").classList.toggle("collapsed", !open);
+    $("cmpToggle").textContent = open ? "Skrij" : "Pokaži"; $("cmpToggle").setAttribute("aria-expanded", String(open));
+  };
+  const savedCmp = store.get("cmp");
+  setCmp(savedCmp ? savedCmp === "1" : !matchMedia("(max-width: 760px)").matches);
+  $("cmpToggle").onclick = () => { const open = cmpCollapsed(); setCmp(open); store.set("cmp", open ? "1" : "0"); renderCompare(); };
   $("play").onclick = () => togglePlay();
   $("time").addEventListener("input", (e) => { togglePlay(false); setFrame(+e.target.value); });
   document.addEventListener("keydown", (e) => {
@@ -1140,6 +1313,10 @@ async function loadMeta(model) {
 }
 
 function applyMeta(meta, keepTime) {
+  const pi = meta.layers.findIndex((l) => l.id === "precip");
+  if (pi >= 0 && !meta.layers.some((l) => l.id === "precip24")) meta.layers.splice(pi + 1, 0,
+    {id: "precip24", name: "Padavine (24 h)", unit: "mm", kind: "scalar", missing: []},
+    {id: "precipacc", name: "Padavine od začetka", unit: "mm", kind: "scalar", missing: []});
   S.meta = meta; S.data = {}; S.loading = {}; contourCache.clear();
   const run = new Date(meta.run);
   $("runLabel").textContent = `${meta.model} · zagon ${pad(run.getUTCHours())} UTC, ${dayFmt.format(run)}`;
@@ -1170,7 +1347,8 @@ async function setModel(model) {
 
 async function loadRelief() {
   try {
-    const g = await (await fetch("data/relief.json")).json(), px = await decodeSprite("data/relief.png");
+    const v = encodeURIComponent(S.meta ? S.meta.built : Date.now());
+    const g = await (await fetch(`data/relief.json?v=${v}`)).json(), px = await decodeSprite(`data/relief.png?v=${v}`);
     const n = px.length / 4, shade = new Float32Array(n), land = new Float32Array(n);
     for (let i = 0; i < n; i++) { shade[i] = px[i*4] / 255; land[i] = px[i*4+1] / 255; }
     return {g, shade, land};
@@ -1201,4 +1379,22 @@ async function boot() {
   await setLayer(S.layer);
 }
 boot();
+
+// Check for a newer forecast every 15 minutes and whenever the tab comes back into view.
+// Images carry the build time in their URL, so a new build never mixes with cached old images.
+async function checkForUpdate() {
+  if (!S.meta || document.hidden) return;
+  let meta;
+  try { meta = await loadMeta(S.model); } catch { return; }
+  if (!meta || meta.built === S.meta.built) return;
+  for (const k of Object.keys(CMP)) delete CMP[k];
+  const keep = Date.parse(S.meta.times[S.frame]);
+  applyMeta(meta, keep);
+  buildLookup(); render();
+  if (FLOW.raf) { cancelAnimationFrame(FLOW.raf); FLOW.raf = 0; }
+  loadLayer("msl").then(() => renderLines()).catch(() => {});
+  await setLayer(S.layer);
+}
+setInterval(checkForUpdate, 15 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(); });
 </script>

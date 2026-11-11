@@ -390,7 +390,7 @@ function loadLayer(id) {
   const L = S.meta.layers.find((l) => l.id === id);
   const btn = document.querySelector(`[data-layer="${id}"]`);
   btn && btn.classList.add("loading");
-  S.loading[id] = decodeSprite(`data/${id}.png`).then((px) => {
+  S.loading[id] = decodeSprite(`data/${id}.png?v=${encodeURIComponent(S.meta.built)}`).then((px) => {
     const N = px.length / 4, span = L.hi - L.lo;
     let d;
     if (L.kind === "vector") {
@@ -982,7 +982,7 @@ async function boot() {
   buildLayerList(); buildDays(); projGrid(); setupInteraction();
   const [bm, lsm] = await Promise.all([
     fetch("basemap-eu.json").then((r) => r.json()),
-    decodeSprite("data/lsm.png").then((px) => { const a = new Float32Array(px.length / 4); for (let i = 0; i < a.length; i++) a[i] = px[i*4] / 255; return a; }).catch(() => null),
+    decodeSprite("data/lsm.png?v=" + encodeURIComponent(S.meta.built)).then((px) => { const a = new Float32Array(px.length / 4); for (let i = 0; i < a.length; i++) a[i] = px[i*4] / 255; return a; }).catch(() => null),
   ]);
   S.basemap = {coast: projLines(bm.coast), borders: projLines(bm.borders)};
   S.lsm = lsm;
@@ -991,4 +991,29 @@ async function boot() {
   await setLayer(S.layer);
 }
 boot();
+
+// Check for a newer forecast every 15 minutes and whenever the tab comes back into view.
+// Images carry the build time in their URL, so a new build never mixes with cached old images.
+async function checkForUpdate() {
+  if (!S.meta || document.hidden) return;
+  let meta;
+  try { meta = await (await fetch("data/meta.json", {cache: "no-cache"})).json(); } catch { return; }
+  if (!meta || meta.built === S.meta.built) return;
+  const keep = Date.parse(S.meta.times[S.frame]);
+  S.meta = meta; S.data = {}; S.loading = {}; contourCache.clear();
+  const run = new Date(meta.run);
+  $("runLabel").textContent = `IFS HRES · zagon ${pad(run.getUTCHours())} UTC, ${dayFmt.format(run)}`;
+  $("builtLabel").textContent = `Podatki preneseni ${new Date(meta.built).toLocaleString()}.`;
+  $("time").max = meta.steps.length - 1;
+  let best = 0;
+  meta.times.forEach((iso, k) => { if (Math.abs(Date.parse(iso) - keep) < Math.abs(Date.parse(meta.times[best]) - keep)) best = k; });
+  S.frame = best;
+  buildLayerList(); buildDays(); projGrid();
+  if (FLOW.raf) { cancelAnimationFrame(FLOW.raf); FLOW.raf = 0; }
+  buildLookup(); render();
+  loadLayer("msl").then(() => renderLines()).catch(() => {});
+  await setLayer(S.layer);
+}
+setInterval(checkForUpdate, 15 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(); });
 </script>
