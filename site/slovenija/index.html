@@ -712,6 +712,7 @@ function renderLines() {
   if (S.isobars && md && S.layer !== "z500") {
     const res = contoursFor("msl", S.frame, 2);
     ctx.strokeStyle = ink; ctx.globalAlpha = 0.8; drawContours(ctx, res, 10); ctx.globalAlpha = 1;
+    labelContours(ctx, res, ink);
     ctx.fillStyle = ink; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     for (const e of res.ext) {
       const [x, y] = gridToScreen(e.i, e.j); if (x < 10 || y < 10 || x > S.W - 10 || y > S.H - 10) continue;
@@ -777,6 +778,33 @@ function drawPrecipMax(ctx) {
   ctx.strokeStyle = "rgba(255, 255, 255, 0.92)"; ctx.lineWidth = 4; ctx.fillStyle = "#d1121f";
   ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 7); ctx.stroke(); ctx.fill();
   ctx.strokeText(t, x, y - 6); ctx.fillText(t, x, y - 6);
+  ctx.restore();
+}
+
+// Value labels along contour lines (isobars). Labels sit on the line, turned along it, with a
+// halo that opens a gap in the line. A level gets a new label only far from its previous ones,
+// and no label is placed close to another, so the map does not fill up with numbers.
+function labelContours(ctx, res, ink) {
+  const placed = [], sameGap = 230, anyGap = 70, edge = 28;
+  ctx.save();
+  ctx.font = `500 10.5px ${css("--font-data")}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+  ctx.fillStyle = ink; ctx.strokeStyle = css("--halo"); ctx.lineWidth = 3.5;
+  for (const [L, segs] of res.levels) {
+    const mine = [];
+    for (let s = 0; s < segs.length; s += 4) {
+      const [x0, y0] = gridToScreen(segs[s], segs[s+1]), [x1, y1] = gridToScreen(segs[s+2], segs[s+3]);
+      const x = (x0 + x1) / 2, y = (y0 + y1) / 2;
+      if (x < edge || y < edge || x > S.W - edge || y > S.H - edge) continue;
+      if (mine.some((p) => Math.hypot(p[0] - x, p[1] - y) < sameGap)) continue;
+      if (placed.some((p) => Math.hypot(p[0] - x, p[1] - y) < anyGap)) continue;
+      let a = Math.atan2(y1 - y0, x1 - x0);
+      if (a > Math.PI / 2) a -= Math.PI; else if (a < -Math.PI / 2) a += Math.PI;
+      ctx.translate(x, y); ctx.rotate(a);
+      ctx.strokeText(String(L), 0, 0); ctx.fillText(String(L), 0, 0);
+      ctx.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
+      mine.push([x, y]); placed.push([x, y]);
+    }
+  }
   ctx.restore();
 }
 
